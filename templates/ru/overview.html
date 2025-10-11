@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block hero %}
+  <div class="hero">
+    <div class="kicker">{{ 'Urgency' if lang=='en' else 'Срочность' }}</div>
+    <div class="h1">Обзор технокоммунизма</div>
+    <div class="subtitle">План 2.0, реестры, наука, изобилие.</div>
+  </div>
+{% endblock %}
+{% block content %}
+  <div class="grid">
+    <div class="card" style="grid-column: span 12;">
+      <div class="bd">
+<h2 class="h2"><b>Обзор технокоммунизма</b></h2>
+<ul><li><b>План 2.0</b>: координация в реальном времени.</li><li><b>Открытый реестр</b>: проверяемый учёт; приватность граждан — прозрачность власти.</li><li><b>Наука</b>: моделировать→симулировать→строить.</li><li><b>Изобилие</b>: базовые гарантированы; редкие — по вкладу.</li></ul>
+</div>
+    </div>
+  </div>
+{% endblock %}

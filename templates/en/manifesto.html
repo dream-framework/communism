@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block hero %}
+  <div class="hero">
+    <div class="kicker">Urgency</div>
+    <div class="h1">The Manifesto · Build Institutions Worthy of Our Tools</div>
+    <div class="subtitle">A decisive fork in history: either technology serves everyone—or we serve it for a few.</div>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="grid">
+
+  <!-- Thesis -->
+  <section class="card" style="grid-column: span 12;">
+    <div class="bd">
+      <h2 class="h2">Thesis</h2>
+      <p>We already possess the technical base for <b>democratic techno‑communism</b>: real‑time planning, predictive logistics, verifiable ledgers, and scalable compute. 
+      What’s missing is <b>political will</b>. Our aim is simple: prioritize human needs and measurable outcomes over speculative finance.</p>
+      <blockquote>History is accelerating. Either we design institutions worthy of our tools—or become tools of someone else’s institutions.</blockquote>
+    </div>
+  </section>
+
+  <!-- Evidence & Research -->
+  <section class="card" style="grid-column: span 12;">
+    <div class="bd">
+      <h2 class="h2">Evidence</h2>
+      <div class="grid">
+        <div class="card" style="grid-column: span 6;">
+          <div class="bd">
+            <h3 class="h2">Finance’s time machine</h3>
+            <p class="math">\( \mathrm{NPV}=\sum_{t=1}^{H} \frac{CF_t}{(1+r)^t}\)</p>
+            <p>When required returns persistently exceed real growth (<code>r>g</code>), each additional future unit contributes <i>vanishing</i> present value. The long tail of needs is erased in budgets optimized for discounted ROI.</p>
+            <details><summary class="pill">Show more</summary>
+              <p>The lesson isn’t “math is evil” — it’s that public goals must <i>not</i> be starved by private discounting. We redirect finance to serve a published plan with auditable KPIs.</p>
+            </details>
+          </div>
+        </div>
+        <div class="card" style="grid-column: span 6;">
+          <div class="bd">
+            <h3 class="h2">Planning 2.0 already exists</h3>
+            <ul>
+              <li><b>Forecasting at scale:</b> large retailers and platforms run ML demand planning and real‑time supply chain optimization internally.</li>
+              <li><b>Open ledgers:</b> modern distributed ledgers make tamper‑evident accounting practical for public oversight.</li>
+              <li><b>Quantum horizon:</b> qubits encode \(2^N\) states—future optimization capacity grows super‑linearly with hardware.</li>
+            </ul>
+            <details><summary class="pill">Examples</summary>
+              <ul>
+                <li>Amazon’s science org publishes on multi‑horizon demand forecasting.</li>
+                <li>Walmart’s global data platform (Luminate → Scintilla) pushes real‑time insights to suppliers.</li>
+                <li>Public‑sector DPI and blockchain pilots prove verifiable registries and entitlements are feasible.</li>
+              </ul>
+            </details>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What we build -->
+  <section class="card" style="grid-column: span 12;">
+    <div class="bd">
+      <h2 class="h2">What We Build</h2>
+      <div class="grid">
+        <div class="card" style="grid-column: span 6;">
+          <div class="bd">
+            <h3 class="h2">Plan 2.0</h3>
+            <ul>
+              <li>Telemetry‑driven resource planning (energy, logistics, housing, health).</li>
+              <li>Public KPIs and objective functions aligned to needs.</li>
+              <li>Rolling horizons (12 weeks, 12 months, 10 years), with scenario stress‑tests.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card" style="grid-column: span 6;">
+          <div class="bd">
+            <h3 class="h2">Open Ledger</h3>
+            <ul>
+              <li>Citizen privacy by default; <b>asymmetric transparency</b> for office‑holders.</li>
+              <li>Project budgets, tenders, and delivery milestones on a verifiable log.</li>
+              <li>Programmable audits; immutable decision trails.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card" style="grid-column: span 6;">
+          <div class="bd">
+            <h3 class="h2">CLE (Competency Labor Equivalent)</h3>
+            <p>A contribution index that unlocks <i>rare</i> opportunities (missions, expeditions, advanced study). Basics are universal.</p>
+            <ul>
+              <li>Baseline CLE 5.0–6.0 → guaranteed essentials.</li>
+              <li>High CLE 7.0+ → access to rare resources.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card" style="grid-column: span 6;">
+          <div class="bd">
+            <h3 class="h2">Governance for Service</h3>
+            <ol>
+              <li>10+ years of measurable impact; CLE ≥ 7.0.</li>
+              <li>Psychometrics + fMRI‑style motive testing.</li>
+              <li>One sandbox year under AI audit (ledgered decisions).</li>
+              <li>Public dossier review + vote.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Math & Tools -->
+  <section class="card" style="grid-column: span 12;">
+    <div class="bd">
+      <h2 class="h2">Math & Tools</h2>
+      <p>Explore the budget effects of time preference with the NPV toy (same one used across the site).</p>
+      {% include "includes/npv.html" %}
+      <details><summary class="pill">Interpretation</summary>
+        <p>As <code>r</code> rises relative to <code>g</code>, long‑horizon social projects lose present value weight. We therefore ring‑fence public baselines from private discounting and fund them via the plan.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- Safeguards -->
+  <section class="card" style="grid-column: span 12;">
+    <div class="bd">
+      <h2 class="h2">Safeguards</h2>
+      <ul>
+        <li><b>Rights:</b> universal floor (housing, health, education, nutrition).</li>
+        <li><b>Data:</b> strict privacy for citizens; full transparency for office‑holders.</li>
+        <li><b>Checks:</b> independent red‑team, reproducible metrics, public error budgets.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Deployment path -->
+  <section class="card" style="grid-column: span 12;">
+    <div class="bd">
+      <h2 class="h2">Deployment Path</h2>
+      <ol>
+        <li><b>Pilots:</b> cities/regions for logistics, energy dispatch, and urban flows with live KPIs.</li>
+        <li><b>Scale‑out:</b> national DPI and open ledgers; mission‑funded R&D.</li>
+        <li><b>Institutions:</b> constitutionalize asymmetric transparency and CLE‑based access to <i>rare</i> resources.</li>
+      </ol>
+      <p class="notice">Need a guide? Click <b>Chat · Groq</b> (bottom‑right) and ask about pilots, metrics, or governance.</p>
+    </div>
+  </section>
+
+  <!-- Call to Action -->
+  <section class="card" style="grid-column: span 12;">
+    <div class="bd">
+      <h2 class="h2">Call to Action</h2>
+      <p>Stop treating the future as collateral. Build the institutions that place human needs first—and demand measurable delivery.</p>
+    </div>
+  </section>
+
+</div>
+{% endblock %}

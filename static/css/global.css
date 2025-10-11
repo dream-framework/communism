@@ -1,0 +1,103 @@
+
+:root{--bg:#0a0f14;--bg2:#0b151f;--card:#0f1b29;--fg:#e9f3ff;--muted:#bcd1ff;--border:#1f3150;--accent:#38bdf8;--accent2:#f59e0b;--shadow:0 14px 40px rgba(0,0,0,.45)}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica Neue,Arial,Noto Sans;color:var(--fg);
+  background:radial-gradient(1400px 900px at 80% -10%,#13386166,transparent 55%),radial-gradient(1200px 800px at -20% 0%,#0ea5e980,transparent 60%),linear-gradient(180deg,var(--bg),var(--bg2));background-attachment:fixed}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.container{max-width:1120px;margin:0 auto;padding:20px 16px 60px}
+.nav{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:10px 16px;position:sticky;top:0;background:rgba(10,15,20,.70);backdrop-filter:blur(6px);border-bottom:1px solid var(--border);z-index:10}
+.brand{font-weight:900}
+.tabs{display:flex;gap:10px;flex-wrap:wrap}.tab{padding:8px 12px;border:1px solid var(--border);border-radius:999px}.tab.active{background:linear-gradient(90deg,rgba(56,189,248,.1),rgba(245,158,11,.1))}
+.hero{padding:22px 0 10px}.h1{font-size:30px;font-weight:900;line-height:1.15;margin:8px 0 6px}.h2{font-size:22px;font-weight:800;margin:20px 0 6px}.subtitle{font-size:15px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}@media (max-width:980px){.grid{grid-template-columns:repeat(6,1fr)}}@media (max-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}.card .bd{padding:16px}
+blockquote{border-left:3px solid var(--accent);padding:6px 12px;margin:8px 0;color:#e8f6ff;background:rgba(56,189,248,.06)}
+.notice{background:rgba(245,158,11,.08);border:1px dashed var(--accent2);padding:10px 14px;border-radius:10px;margin:8px 0}
+.math{font-family:ui-serif,Georgia,Cambria,Times New Roman,serif;font-size:15px}
+.footer{color:var(--muted);border-top:1px solid var(--border);padding:12px 0}.pill{display:inline-block;border:1px solid var(--border);padding:4px 10px;border-radius:999px;font-size:12px}
+.btn{display:inline-block;padding:10px 14px;border-radius:999px;border:1px solid var(--border)}.btn.primary{background:linear-gradient(90deg,#38bdf8,#0ea5e9);color:#001018;font-weight:800}
+.form-select,.form-control,.form-range{width:100%;background:#0c1725;color:#eaf4ff;border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+label.form-label{font-size:13px;color:var(--muted);margin-bottom:6px;display:block}
+.right{text-align:right}
+ul{line-height:1.55}
+#botToggle{position:fixed;right:18px;bottom:18px;z-index:50}
+#botPanel{position:fixed;right:18px;bottom:78px;width:340px;max-height:70vh;overflow:hidden;display:none;border:1px solid var(--border);border-radius:14px;background:#0a121c;box-shadow:var(--shadow)}
+#botPanel header{padding:10px 12px;border-bottom:1px solid var(--border)}#botPanel .log{padding:12px;height:300px;overflow:auto;font-size:14px}
+#botPanel .entry{display:flex;gap:8px;padding:10px;border-top:1px solid var(--border)}#botPanel input{flex:1}
+.msg{padding:6px 10px;border-radius:12px;margin:8px 0;max-width:85%}.msg.user{background:#22324a}.msg.bot{background:#1a2536}
+/* NPV toy embed: hide its own nav/tabs/header/footer so your site shows only one navbar */
+#npv-embed nav,
+#npv-embed .nav,
+#npv-embed .navbar,
+#npv-embed header,
+#npv-embed .header,
+#npv-embed .topbar,
+#npv-embed .tabs,
+#npv-embed .site-tabs,
+#npv-embed footer {
+  display: none !important;
+}
+
+/* Tighten layout inside the embed */
+#npv-embed .container,
+#npv-embed .page,
+#npv-embed main {
+  padding-top: 0 !important;
+}
+
+/* Neutralize any body-level styling the toy may bring */
+#npv-embed body {
+  margin: 0 !important;
+  background: transparent !important;
+}
+
+/* Optional: unify typography and prevent horizontal overflow */
+#npv-embed {
+  font-size: 16px;
+  line-height: 1.55;
+}
+#npv-embed * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+/* Kill any navbar/tabs/header/footer coming from the toy */
+#npv-embed nav,
+#npv-embed .nav,
+#npv-embed .navbar,
+#npv-embed header,
+#npv-embed footer,
+#npv-embed .tabs,
+#npv-embed .tab {
+  display: none !important;
+}
+
+/* Optional tidy-up */
+#npv-embed .container,
+#npv-embed main { padding-top: 0 !important; }
+#npv-embed body { margin: 0 !important; background: transparent !important; }
+
+/* Hide ONLY the in-content duplicate nav tabs from the toy include */
+.container .grid .card .bd .tabs a.tab[href*="/manifesto"],
+.container .grid .card .bd .tabs a.tab[href*="/death"],
+.container .grid .card .bd .tabs a.tab[href*="/math"],
+.container .grid .card .bd .tabs a.tab[href*="/overview"],
+.container .grid .card .bd .tabs a.tab[href*="/altruists"],
+.container .grid .card .bd .tabs a.tab[href*="/faq"],
+.container .grid .card .bd .tabs a.tab[href*="/appendix"],
+.container .grid .card .bd .tabs a.tab[href$="/en"],
+.container .grid .card .bd .tabs a.tab[href$="/ru"] {
+  display: none !important;
+}
+
+/* If that tab group becomes empty, hide the whole bar */
+.container .grid .card .bd .tabs:has(a.tab[href*="/manifesto"],
+                                     a.tab[href*="/death"],
+                                     a.tab[href*="/math"],
+                                     a.tab[href*="/overview"],
+                                     a.tab[href*="/altruists"],
+                                     a.tab[href*="/faq"],
+                                     a.tab[href*="/appendix"],
+                                     a.tab[href$="/en"],
+                                     a.tab[href$="/ru"]) {
+  display: none !important;
+}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block hero %}
+  <div class="hero">
+    <div class="kicker">{{ 'Urgency' if lang=='en' else 'Срочность' }}</div>
+    <div class="h1">Математика · NPV‑симулятор</div>
+    <div class="subtitle">Сделать дисконтирование наглядным — и управляемым.</div>
+  </div>
+{% endblock %}
+{% block content %}
+  <div class="grid">
+    <div class="card" style="grid-column: span 12;">
+      <div class="bd">
+<h2 class="h2"><b>Математика · NPV и рост</b></h2>
+<p>Варьируйте <code>r</code>, <code>H</code>, <code>c</code>, <code>g</code> в симуляторе ниже и наблюдайте, как дисконтирование концентрирует стоимость в <code>t=0</code>. Смысл — проектировать институты, где скидка по времени не уничтожает потребности.</p>
+<div class="notice math">\( \mathrm{NPV} = \sum_{t=1}^{H} \frac{CF_t}{(1+r)^t} \), \( CF_t = c\,(1+g)^{t-1} \).</div>
+{% include "includes/npv.html" %}
+</div>
+    </div>
+  </div>
+{% endblock %}

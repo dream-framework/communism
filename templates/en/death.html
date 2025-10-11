@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block hero %}
+  <div class="hero">
+    <div class="kicker">{{ 'Urgency' if lang=='en' else 'Срочность' }}</div>
+    <div class="h1">Death of Theft of Future</div>
+    <div class="subtitle">Ending the finance time‑machine.</div>
+  </div>
+{% endblock %}
+{% block content %}
+  <div class="grid">
+    <div class="card" style="grid-column: span 12;">
+      <div class="bd">
+<h2 class="h2"><b>The Death of “Theft of the Future”</b></h2>
+<p><b>Abstract.</b> Capitalism evolved from exploiting present labor to pre‑owning the future. We formalize the time‑machine mechanics and show why a systemic break is inevitable.</p>
+<h3 class="h2">1) From factory to finance</h3>
+<p>Classical: \(W=c+v+m\). Late capitalism monetizes future flows now.</p>
+<h3 class="h2">2) The time‑machine formula</h3>
+<div class="notice math">\( \mathrm{NPV} = \sum_{t=1}^{H} \frac{CF_t}{(1+r)^t} \)</div>
+<p>\(CF_t\) = labor‑created cash flows; \(r\) = required return. Society mortgaged to its unborn output.</p>
+<h3 class="h2">3) AI bubble as a diagnostic</h3>
+<ul><li>Markets price <i>rights to future automation</i>, not present productivity.</li><li>Capex outruns measured ROI; hype–reality gap widens.</li></ul>
+<h3 class="h2">4) Collapse math</h3>
+<div class="notice math">\( r>g \Rightarrow \lim_{H\to\infty} \sum \frac{\text{Future Labor}}{(1+r)^t} = 0. \)</div>
+<p>If return demands outrun real growth, the discount machine eats the future.</p>
+<h3 class="h2">5) Three limits</h3>
+<ul><li><b>Physical</b> (finite resources)</li><li><b>Social</b> (inequality & debt)</li><li><b>Mathematical</b> (unserviceable leverage)</li></ul>
+<h3 class="h2">6) Bifurcation</h3>
+<p><b>Techno‑feudalism</b> vs <b>Techno‑communism</b>. The continuity: labor‑value logic meets modern finance. The result: a necessary paradigm shift.</p>
+</div>
+    </div>
+  </div>
+{% endblock %}

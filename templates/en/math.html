@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block hero %}
+<style>
+/* Hide any nav/tabs that appear inside the content area (not the top navbar) */
+.container .card .bd .tabs,
+.container .card .bd a.tab {
+  display: none !important;
+}
+</style>
+  <div class="hero">
+    <div class="kicker">{{ 'Urgency' if lang=='en' else 'Срочность' }}</div>
+    <div class="h1">Math · NPV Toy</div>
+    <div class="subtitle">Make discounting visible—and tractable.</div>
+  </div>
+{% endblock %}
+{% block content %}
+  <div class="grid">
+    <div class="card" style="grid-column: span 12;">
+      <div class="bd">
+<h2 class="h2"><b>Math · NPV & Growth</b></h2>
+<p>Adjust <code>r</code>, <code>H</code>, <code>c</code>, <code>g</code> below and see how discounting concentrates value at <code>t=0</code>. Then design institutions where time preference doesn’t erase needs.</p>
+<div class="notice math">\( \mathrm{NPV} = \sum_{t=1}^{H} \frac{CF_t}{(1+r)^t} \), \( CF_t = c\,(1+g)^{t-1} \).</div>
+<div id="npv-embed">
+  {% include "includes/npv.html" %}
+</div>
+</div>
+    </div>
+  </div>
+{% endblock %}

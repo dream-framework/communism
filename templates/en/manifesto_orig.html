@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block hero %}
+  <div class="hero">
+    <div class="kicker">{{ 'Urgency' if lang=='en' else 'Срочность' }}</div>
+    <div class="h1">The Manifesto</div>
+    <div class="subtitle">Decisive fork: build for everyone, or be owned by a few.</div>
+  </div>
+{% endblock %}
+{% block content %}
+  <div class="grid">
+    <div class="card" style="grid-column: span 12;">
+      <div class="bd">
+<h2 class="h2"><b>Contours of the Future: The Technological Imperative</b></h2>
+<p><b>Thesis:</b> We hit a civilizational bifurcation. The <b>technical base</b> for democratic techno‑communism already exists inside corporations (real‑time planning, predictive logistics, open ledgers). What remains is <b>political will</b>: either technology serves everyone, or we descend into <b>techno‑feudalism</b>—algorithmic dependency.</p>
+<hr>
+<h3 class="h2">1) The paradigm crisis</h3>
+<p>Late capitalism shifted from exploiting present labor to <b>stealing the future</b> via NPV. When the return requirement <code>r</code> outruns real growth <code>g</code>, the machine breaks.</p>
+<h3 class="h2">2) Planning 2.0 is here</h3>
+<ul>
+<li><b>Corporate planner:</b> Amazon, Walmart—predictive, real‑time logistics as internal plans.</li>
+<li><b>Quantum step:</b> logistics/energy optimization; \(N\) qubits encode \(2^N\) states.</li>
+<li><b>Transparent accounting:</b> distributed ledgers; algorithmic coordination at scale.</li>
+</ul>
+<h3 class="h2">3) Two paths</h3>
+<p><b>Techno‑feudalism</b>: rents, castes, behavioral control.<br>
+<b>Democratic techno‑communism</b>: needs‑based plan with AI optimization; CLE (ТЭК) as contribution.</p>
+<h3 class="h2">4) Why it’s more efficient</h3>
+<ul><li>Removes parasitic ad/finance overhead.</li><li>Optimizes away crises; resource KPI ↑.</li><li>Long‑horizon build beats quarterly panic.</li></ul>
+<p><b>No middle ground.</b> “Moderation” delays collapse. The climb is an engineering task.</p>
+</div>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,1 @@
+(function(){document.addEventListener('click',function(e){if(e.target.matches('a[href^="#"]')){const el=document.querySelector(e.target.getAttribute('href'));if(el){e.preventDefault();el.scrollIntoView({behavior:'smooth'});}}});})();
