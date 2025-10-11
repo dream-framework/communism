@@ -2,8 +2,17 @@ services:
   - type: web
     name: tech-communism
     env: python
+    plan: free                 # <<< force free tier
+    numInstances: 1            # <<< one free instance
+    autoDeploy: true
+    pullRequestPreviewsEnabled: false
+
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    # Keep Gunicorn simple on the free instance (1 worker is enough)
+    startCommand: gunicorn app:app
+
     envVars:
       - key: GROQ_API_KEY
-        sync: false
+        sync: false            # set value in Render dashboard later
+      - key: PYTHON_VERSION
+        value: "3.11"          # optional but helpful for reproducibility
