@@ -1,0 +1,282 @@
+<!-- templates/includes/npv.html (RU) -->
+<div id="npv-toy" class="npv-toy">
+  <!-- Заголовок / легенда -->
+  <div class="npv-row">
+    <div class="npv-col npv-legend">
+      <div class="npv-legend-item"><span class="swatch sw-blue"></span> Масса PV при t=0</div>
+      <div class="npv-legend-item"><span class="swatch sw-red"></span> Номинальная масса (без дисконта)</div>
+    </div>
+  </div>
+
+  <p class="npv-note">
+    Когда <em>r ≥ g</em>, предельный кредит (PV) превращается в требование, которое способно превысить
+    <em>недисконтированный</em> выпуск за горизонт <em>H</em>.
+  </p>
+
+  <!-- Управления (дискретная модель) -->
+  <div class="npv-controls card">
+    <div class="npv-grid">
+      <label class="form-label">Ставка дисконта r (%/год): <span id="npv-rv">10.0</span>
+        <input id="npv-r" class="form-range" type="range" min="0" max="30" step="0.1" value="10.0">
+      </label>
+
+      <label class="form-label">Горизонт H (лет): <span id="npv-hv">75</span>
+        <input id="npv-h" class="form-range" type="range" min="1" max="75" step="1" value="75">
+      </label>
+
+      <label class="form-label">Рост g (%/год): <span id="npv-gv">0.0</span>
+        <input id="npv-g" class="form-range" type="range" min="-5" max="15" step="0.1" value="0.0">
+      </label>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="npv-kpis">
+    <div class="kpi"><div class="k">PV(H) при t=0</div><div class="v" id="npv-pv">–</div></div>
+    <div class="kpi"><div class="k">Номинал (без дисконта, H лет)</div><div class="v" id="npv-nom">–</div></div>
+    <div class="kpi"><div class="k">Будущая задолженность к H (из PV)</div><div class="v" id="npv-debt">–</div></div>
+  </div>
+
+  <!-- Основная зона: 3D + столбцы -->
+  <div class="npv-main">
+    <div class="card npv-plot-card">
+      <div id="npvplot" class="npv-plot"></div>
+    </div>
+    <div class="card npv-bars-card">
+      <div id="npv-bars" class="npv-bars"></div>
+    </div>
+  </div>
+
+  <!-- Слайды / нарратив -->
+  <div class="npv-slides card">
+    <div class="slides-head">Нарратив</div>
+    <div class="slides-body" id="npv-slide-text">
+      NPV задаёт сегодняшний кредитный лимит на будущий труд. Капитал потребляет до этого лимита; при минимальных выплатах профинансированный PV наращивается в будущий долг.
+    </div>
+    <div class="slides-nav">
+      <button class="pill" data-slide="0">1 · Концентрация</button>
+      <button class="pill" data-slide="1">2 · Рост vs r</button>
+      <button class="pill" data-slide="2">3 · Долг из PV</button>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Scoped styles */
+.npv-toy{ --box:#0f1b29; --line:#22354f; --fg:#e9f3ff; --muted:#bcd1ff; --blue:#3b82f6; --red:#ef4444; --shadow:0 1px 0 rgba(0,0,0,.25), 0 12px 30px rgba(0,0,0,.25); }
+.npv-toy .card{ background: var(--box); border:1px solid var(--line); border-radius:16px; padding:14px; box-shadow: var(--shadow); }
+.npv-row{ display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:8px; }
+.npv-col{ flex:1; min-width:0; }
+.npv-h3{ margin:0 0 6px; font-weight:800; letter-spacing:.2px; }
+.npv-eq{ font-family: ui-serif, Georgia, Cambria, 'Times New Roman', serif; font-size:14px; color: var(--muted); }
+.npv-legend{ display:flex; gap:16px; justify-content:flex-end; align-items:center; }
+.npv-legend-item{ display:flex; align-items:center; gap:8px; font-size:14px; color: var(--muted); white-space:nowrap; }
+.swatch{ width:14px; height:14px; border-radius:3px; display:inline-block; border:1px solid var(--line); }
+.sw-blue{ background: linear-gradient(90deg, #93c5fd, #3b82f6); }
+.sw-red{  background: linear-gradient(90deg, #fecaca, #ef4444); }
+
+.npv-note{ margin:6px 0 10px; color:var(--muted); font-size:13px; }
+
+.npv-controls .npv-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
+@media (max-width:1100px){ .npv-controls .npv-grid{ grid-template-columns: repeat(2, 1fr);} }
+.form-label{ display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+.form-range{ width:100%; }
+
+.npv-kpis{ display:grid; grid-template-columns: repeat(3,1fr); gap:12px; margin:10px 0 12px; }
+@media (max-width:1100px){ .npv-kpis{ grid-template-columns: 1fr; } }
+.kpi{ background:var(--box); border:1px solid var(--line); border-radius:14px; padding:12px; box-shadow: var(--shadow); }
+.kpi .k{ font-size:12px; color:var(--muted); margin-bottom:4px; letter-spacing:.2px; }
+.kpi .v{ font-size:20px; font-weight:800; }
+
+.npv-main{ display:grid; grid-template-columns: 1.05fr 0.95fr; gap:14px; align-items:stretch; }
+@media (max-width:1100px){ .npv-main{ grid-template-columns: 1fr; } }
+
+.npv-plot-card, .npv-bars-card{ display:flex; flex-direction:column; }
+.npv-plot{ width:100%; height:520px; }
+.npv-bars{ width:100%; height:520px; } /* equal height for balance */
+
+.npv-slides{ margin-top:14px; }
+.slides-head{ font-weight:800; margin-bottom:6px; letter-spacing:.2px; }
+.slides-body{ color: var(--fg); margin-bottom:10px; }
+.slides-nav{ display:flex; flex-wrap:wrap; gap:8px; }
+.pill{ display:inline-block; border:1px solid var(--line); padding:6px 12px; border-radius:999px; background:transparent; color:var(--fg); cursor:pointer; transition: all .15s ease; }
+.pill:hover{ transform: translateY(-1px); }
+.pill.active{ background:linear-gradient(90deg, #93c5fd33, #ef444433); }
+
+.npv-warn { display:inline-block; margin-top:6px; padding:2px 8px; border:1px solid #ef4444; border-radius:999px; color:#ef4444; background:#ef44441a; font-size:12px; }
+</style>
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>
+(function(){
+  const elPlot = document.getElementById('npvplot');
+  const elBars = document.getElementById('npv-bars');
+
+  const rEl = document.getElementById('npv-r');
+  const hEl = document.getElementById('npv-h');
+  const gEl = document.getElementById('npv-g');
+
+  const rV = document.getElementById('npv-rv');
+  const hV = document.getElementById('npv-hv');
+  const gV = document.getElementById('npv-gv');
+
+  const pvBox = document.getElementById('npv-pv');
+  const nomBox = document.getElementById('npv-nom');
+  const debtBox = document.getElementById('npv-debt');
+
+  const slideBtns = Array.from(document.querySelectorAll('.npv-slides .pill'));
+  const slideBody = document.getElementById('npv-slide-text');
+
+  const slidesText = [
+    'Дисконтовка концентрирует ценность в t=0. Чем дальше поток, тем меньше его вес сегодня.',
+    'Рост g помогает, но при r > g дисконтированный хвост всё равно сжимается.',
+    'Долг из PV: при минимальных выплатах профинансированный PV наращивается в будущую задолженность.'
+  ];
+  slideBtns.forEach(btn=>btn.addEventListener('click', ()=>{
+    slideBtns.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const idx = parseInt(btn.dataset.slide||'0',10)||0;
+    slideBody.textContent = slidesText[idx];
+    update(); // обновить сразу
+  }));
+  slideBtns[0].classList.add('active');
+
+  function fmt(x){ return (Math.round(x*1000)/1000).toLocaleString('ru-RU', {maximumFractionDigits:3}); }
+
+  function sphere(cx, cy, cz, r, n){
+    n = n || 50;
+    const th = Array.from({length:n}, (_,i)=> i*Math.PI/(n-1));
+    const ph = Array.from({length:n}, (_,j)=> j*2*Math.PI/(n-1));
+    const X=[], Y=[], Z=[];
+    for(let i=0;i<n;i++){
+      const rowX=[], rowY=[], rowZ=[];
+      for(let j=0;j<n;j++){
+        const t = th[i], p = ph[j];
+        rowX.push(cx + r*Math.sin(t)*Math.cos(p));
+        rowY.push(cy + r*Math.sin(t)*Math.sin(p));
+        rowZ.push(cz + r*Math.cos(t));
+      }
+      X.push(rowX); Y.push(rowY); Z.push(rowZ);
+    }
+    return {x:X,y:Y,z:Z};
+  }
+
+  // Дискретная модель с базовым потоком 1 в первый год, далее рост g
+  function compute(rPct, H, gPct){
+    const r = rPct/100, g = gPct/100;
+    let pv=0, nom=0, cf=1.0;
+    for(let t=1;t<=H;t++){
+      pv  += cf/Math.pow(1+r,t);
+      nom += cf;
+      cf  *= (1+g);
+    }
+    const debtH = pv * Math.pow(1+r, H); // кредит-лимитная интерпретация
+    return {r, g, H, pv, nom, debtH};
+  }
+
+  function slideMapping(idx, M){
+    return (idx === 2)
+      ? {leftVal: M.pv, leftLabel: 'PV при t=0', rightVal: M.debtH, rightLabel: 'Долг к H (из PV)'}
+      : {leftVal: M.pv, leftLabel: 'PV при t=0', rightVal: M.nom,   rightLabel: 'Номинал'};
+  }
+
+  function frontCam(){ return {eye:{x:0.01, y:-2.6, z:1.1}, center:{x:0,y:0,z:0}, up:{x:0,y:0,z:1}}; }
+
+  function draw(r=10, H=75, g=0){
+    rV.textContent = r.toFixed(1);
+    hV.textContent = String(H);
+    gV.textContent = g.toFixed(1);
+
+    const M = compute(r, H, g);
+
+    // KPI
+    pvBox.textContent = fmt(M.pv);
+    nomBox.textContent = fmt(M.nom);
+    debtBox.textContent = fmt(M.debtH);
+
+    // Предупреждение об «оверхэнге»
+    const overhang = M.debtH / Math.max(M.nom, 1e-9);
+    if (M.r >= M.g && M.debtH > M.nom){
+      slideBody.innerHTML = slidesText[parseInt(document.querySelector('.npv-slides .pill.active')?.dataset.slide||'0',10)]
+        + ` <span class="npv-warn">Перевес ×${overhang.toFixed(2)}: Долг@H &gt; Номинал</span>`;
+    }
+
+    const slideIdx = parseInt(document.querySelector('.npv-slides .pill.active')?.dataset.slide||'0',10);
+    const map = slideMapping(slideIdx, M);
+
+    // Радиусы ~ кубический корень от метрик (объём ~ значению)
+    const RMAX = 0.85, EPS=1e-9;
+    const maxVal = Math.max(map.leftVal, map.rightVal, EPS);
+    const r1 = RMAX * Math.cbrt(map.leftVal / maxVal);
+    const r2 = RMAX * Math.cbrt(map.rightVal / maxVal);
+
+    // Две сферы, смещённые по x; равномерные масштабы; hover = значения
+    const s1 = sphere(1.0, 0, 0, r1, 60);
+    const s2 = sphere(2.6, 0, 0, r2, 60);
+    const cd1 = s1.x.map(row=>row.map(()=>map.leftVal));
+    const cd2 = s2.x.map(row=>row.map(()=>map.rightVal));
+
+    const surf1 = {type:'surface', x:s1.x, y:s1.y, z:s1.z, colorscale:'Blues', showscale:false, opacity:0.98,
+                   name:map.leftLabel, customdata:cd1, hovertemplate:`${map.leftLabel}: %{customdata:.3f}<extra></extra>`};
+    const surf2 = {type:'surface', x:s2.x, y:s2.y, z:s2.z, colorscale:'Reds',  showscale:false, opacity:0.98, reversescale:true,
+                   name:map.rightLabel, customdata:cd2, hovertemplate:`${map.rightLabel}: %{customdata:.3f}<extra></extra>`};
+
+    const layout3d = {
+      margin:{l:0,r:0,t:0,b:0},
+      paper_bgcolor:'rgba(0,0,0,0)',
+      scene:{
+        xaxis:{title:'x (сейчас ↔ будущее)', range:[0, 3.6], tick0:0, dtick:0.5, gridcolor:'#93a3bf', zeroline:false, titlefont:{color:'#fff'}, tickfont:{color:'#fff'}},
+        yaxis:{title:'y', range:[-1.6,1.6], gridcolor:'#93a3bf', zeroline:false, titlefont:{color:'#fff'}, tickfont:{color:'#fff'}},
+        zaxis:{title:'z', range:[-1.6,1.6], gridcolor:'#93a3bf', zeroline:false, titlefont:{color:'#fff'}, tickfont:{color:'#fff'}},
+        aspectmode:'cube',
+        camera: frontCam(),
+        bgcolor:'rgba(0,0,0,0)'
+      },
+      height:520,
+      font:{color:'#e9f3ff'}
+    };
+
+    if(!elPlot._plotted){
+      Plotly.newPlot(elPlot, [surf1, surf2], layout3d, {displayModeBar:false, responsive:true});
+      elPlot._plotted = true;
+    }else{
+      Plotly.react(elPlot, [surf1, surf2], layout3d, {displayModeBar:false, responsive:true});
+    }
+
+    // Столбцы: PV@0, Номинал, Долг@H
+    const colors = ['#3b82f6', '#ef4444', (M.debtH > M.nom ? '#dc2626' : '#10b981')];
+    const bars = [M.pv, M.nom, M.debtH];
+    const barTrace = {
+      type:'bar', x:['PV@0','Номинал','Долг@H'], y:bars,
+      marker:{color:colors},
+      text:['', '', (M.debtH > M.nom ? `×${overhang.toFixed(2)}` : '')],
+      textposition:'auto',
+      hovertemplate:'%{x}: %{y:.3f}<extra></extra>'
+    };
+    const barLayout = {
+      margin:{l:48,r:10,t:10,b:40},
+      paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      yaxis:{gridcolor:'#22354f', title:'Величина (условные единицы)', titlefont:{color:'#fff'}, tickfont:{color:'#fff'}},
+      xaxis:{title:'Категория', titlefont:{color:'#fff'}, tickfont:{color:'#fff'}},
+      font:{color:'#e9f3ff'}
+    };
+    if(!elBars._plotted){
+      Plotly.newPlot(elBars, [barTrace], barLayout, {displayModeBar:false, responsive:true});
+      elBars._plotted = true;
+    }else{
+      Plotly.react(elBars, [barTrace], barLayout, {displayModeBar:false, responsive:true});
+    }
+  }
+
+  function update(){ draw(parseFloat(rEl.value), parseInt(hEl.value,10), parseFloat(gEl.value)); }
+
+  [rEl,hEl,gEl].forEach(el => el.addEventListener('input', update));
+  elPlot.addEventListener('plotly_afterplot', update);
+  window.addEventListener('resize', ()=> {
+    if (elPlot) Plotly.Plots.resize(elPlot);
+    if (elBars) Plotly.Plots.resize(elBars);
+  });
+
+  draw(); // первый рендер
+})();
+</script>
