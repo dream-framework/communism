@@ -3,6 +3,9 @@ import os, requests
 from flask import Flask, render_template, redirect, url_for, request, jsonify, Blueprint
 from functools import wraps
 
+
+MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")  # ← same as physics
+
 app = Flask(__name__)
 app.url_map.strict_slashes = False  # /api/groq_chat and /api/groq_chat/ both work
 pages = Blueprint('pages', __name__)
@@ -54,51 +57,39 @@ def health_env():
     present = bool(os.getenv('GROQ_API_KEY'))
     return jsonify(ok=True, groq_present=present)
 
-# ---- Groq chat endpoint ----
-@app.route('/api/groq_chat', methods=['POST', 'GET'])  # allow GET for quick URL-bar tests
+@app.route('/api/groq_chat', methods=['POST','GET'])
 def groq_chat():
-    key = os.getenv('GROQ_API_KEY', '')
+    key = os.getenv('GROQ_API_KEY')
     if not key:
         return jsonify({'ok': False, 'reply': '[GROQ_API_KEY not set on server]'}), 500
 
-    # Accept POST JSON { "message": "..." } or GET ?message=...
-    msg = None
-    if request.method == 'POST':
-        data = request.get_json(silent=True) or {}
-        msg = (data.get('message') or '').strip()
-    else:
-        msg = (request.args.get('message') or '').strip()
-
+    msg = (request.get_json(silent=True) or {}).get('message') if request.method=='POST' else request.args.get('message')
+    msg = (msg or '').strip()
     if not msg:
         return jsonify({'ok': False, 'reply': 'Provide "message"'}), 400
 
+    url = 'https://api.groq.com/openai/v1/chat/completions'
+    headers = {'Authorization': f'Bearer {key}', 'Content-Type': 'application/json', 'Accept': 'application/json'}
+    payload = {
+        'model': MODEL,  # ← llama-3.3-70b-versatile
+        'messages': [
+            {'role':'system','content':'Act as a precise, urgent site guide; cite math clearly.'},
+            {'role':'user','content': msg}
+        ],
+        'temperature': 0.3,
+        'max_tokens': 500,
+    }
+    r = requests.post(url, json=payload, headers=headers, timeout=45)
     try:
-        url = 'https://api.groq.com/openai/v1/chat/completions'
-        headers = {
-            'Authorization': f'Bearer {key}',
-            'Content-Type': 'application/json'
-        }
-        payload = {
-            'model': 'llama-3.1-70b-versatile',  # valid Groq model
-            'messages': [
-                {'role':'system','content':'Act as a precise, urgent site guide; cite math clearly.'},
-                {'role':'user','content': msg}
-            ],
-            'temperature': 0.3,
-            'max_tokens': 500
-        }
-        r = requests.post(url, json=payload, headers=headers, timeout=45)
-        if r.status_code == 401:
-            return jsonify({'ok': False, 'reply': '[Groq 401: bad or missing key]'}), 500
-        r.raise_for_status()
         j = r.json()
-        txt = (j.get('choices') or [{}])[0].get('message', {}).get('content', '').strip() or '[empty]'
-        return jsonify({'ok': True, 'reply': txt})
-    except requests.Timeout:
-        return jsonify({'ok': False, 'reply': '[timeout talking to Groq]'}), 504
-    except Exception as e:
-        return jsonify({'ok': False, 'reply': f'[error: {e}]'}), 500
-    
+    except Exception:
+        j = {'error': {'message': r.text}}
+    if r.status_code != 200:
+        err = (j.get('error') or {}).get('message') or r.text
+        return jsonify({'ok': False, 'reply': f'[Groq {r.status_code}] {err}'}), 500
+
+    txt = (j.get('choices') or [{}])[0].get('message', {}).get('content', '').strip() or '[empty]'
+    return jsonify({'ok': True, 'reply': txt})    
     
 if __name__ == '__main__':
     # Turn off the reloader when running inside Spyder/Jupyter
