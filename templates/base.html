@@ -17,8 +17,8 @@
       fill="#fa063bff" stroke="#fa063bff" stroke-width="6" stroke-linejoin="round"/>
 
   </svg>
-  Tech Communism
-</div>
+    {{ 'Tech Communism' if lang == 'en' else 'Контуры коммунистического будущего' }}
+  </div>
     <div class="tabs">
       <a class="tab {% if active=='manifesto' %}active{% endif %}" href="{{ url_for('pages.manifesto', lang=lang) }}">{{ 'Manifesto' if lang=='en' else 'Манифест' }}</a>
       <a class="tab {% if active=='death' %}active{% endif %}" href="{{ url_for('pages.death', lang=lang) }}">{{ 'Death of Theft of Future' if lang=='en' else 'Смерть кражи будущего' }}</a>
