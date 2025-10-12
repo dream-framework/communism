@@ -9,7 +9,16 @@
 </head>
 <body data-lang="{{ lang|default('en') }}">
   <nav class="nav">
-    <div class="brand">⚙️ Tech Communism</div>
+    <div class="brand">
+  <svg class="brand-mark" viewBox="0 0 64 72" aria-hidden="true" focusable="false">
+    <!-- STAR (blinks) -->
+    <path class="star"
+      d="M32 6l7 15 16 2-12 10 4 16-15-8-15 8 4-16L9 23l16-2 7-15z"
+      fill="#fa063bff" stroke="#fa063bff" stroke-width="6" stroke-linejoin="round"/>
+
+  </svg>
+  Tech Communism
+</div>
     <div class="tabs">
       <a class="tab {% if active=='manifesto' %}active{% endif %}" href="{{ url_for('pages.manifesto', lang=lang) }}">{{ 'Manifesto' if lang=='en' else 'Манифест' }}</a>
       <a class="tab {% if active=='death' %}active{% endif %}" href="{{ url_for('pages.death', lang=lang) }}">{{ 'Death of Theft of Future' if lang=='en' else 'Смерть кражи будущего' }}</a>

@@ -101,3 +101,43 @@ ul{line-height:1.55}
                                      a.tab[href$="/ru"]) {
   display: none !important;
 }
+
+
+/* ensure nothing clips the icon */
+.nav { overflow: visible; }
+
+/* keep the same “gear” footprint & position */
+.nav .brand{
+  position: relative;
+  padding-left: 28px;          /* same left inset as gear */
+  line-height: 1;
+}
+
+/* inline SVG placed exactly where the gear was */
+.nav .brand .brand-mark{
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 20px;                 /* ≈ emoji gear size */
+  height: 22px;                /* a touch taller to include the star */
+  transform: translateY(-55%); /* optical centering */
+  display: block;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,.35));
+}
+
+/* only the star blinks */
+.nav .brand .brand-mark .star{
+  animation: tc-blink 3s steps(2,end) infinite;
+}
+
+@keyframes tc-blink{
+  0% { opacity: 1; }
+  50%{ opacity: .25; }
+  100%{ opacity: 1; }
+}
+
+/* respect reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .nav .brand .brand-mark .star{ animation: none; }
+}
