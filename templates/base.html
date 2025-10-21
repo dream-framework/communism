@@ -3,7 +3,12 @@
 <html lang="{{ lang|default('en') }}">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ title or "Коммунизм - технологические контуры будущего" }}</title>
+  {% set titles = {
+    'en': title_en or 'Communism — Technological Contours of the Future',
+    'ru': title_ru or 'Коммунизм — технологические контуры будущего'
+  } %}
+  <title>{{ titles.get(lang|default('en'), titles['en']) }}</title>
+
   <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
