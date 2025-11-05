@@ -138,6 +138,10 @@ def summarize_locally(items: List[Dict[str, Any]]) -> str:
 def groq_generate_digest(items: List[Dict[str, Any]]) -> str:
     if not items:
         return "Нет новых новостей за этот период."
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
     prepared_text = build_items_text(items, max_chars=16000)
     system_msg = (
         "Ты — лаконичный фактологичный помощник-аналитик. "
@@ -147,6 +151,7 @@ def groq_generate_digest(items: List[Dict[str, Any]]) -> str:
     )
     user_msg = f"Сделай краткую русскоязычную сводку (3–4 предложения) из этих материалов:\n{prepared_text}"
 
+<<<<<<< Updated upstream
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     payload = {
@@ -158,17 +163,41 @@ def groq_generate_digest(items: List[Dict[str, Any]]) -> str:
     }
 
     # simple retry for 429
+=======
+    url = "https://api.groq.com/openai/v1/chat/completions"  # Chat Completions endpoint
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    payload = {
+        "model": GROQ_MODEL,
+        "messages": [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": user_msg},
+        ],
+        "temperature": 0.0,
+        # FIX: this endpoint expects max_completion_tokens (or legacy max_tokens), not max_output_tokens
+        "max_completion_tokens": GROQ_MAX_OUTPUT_TOKENS,
+    }
+
+>>>>>>> Stashed changes
     for attempt in range(3):
         resp = requests.post(url, headers=headers, json=payload, timeout=60)
         if resp.status_code == 429:
             retry = int(resp.headers.get("retry-after", "2"))
             time.sleep(min(5, max(1, retry)))
             continue
+<<<<<<< Updated upstream
+=======
+        if resp.status_code >= 400:
+            # helpful debug if it ever happens again
+            print("Groq error:", resp.status_code, resp.text)
+>>>>>>> Stashed changes
         resp.raise_for_status()
         j = resp.json()
         text = j.get("choices", [{}])[0].get("message", {}).get("content", "")
         return text.strip() or "Нет доступных новостей."
+<<<<<<< Updated upstream
     # fallback
+=======
+>>>>>>> Stashed changes
     return summarize_locally(items)
 
 # =========================
