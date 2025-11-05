@@ -1,0 +1,59 @@
+name: news-to-mastodon
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # hourly, UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: news-to-mastodon
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feeds branch
+        uses: actions/checkout@v4
+        with:
+          ref: feeds
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run bot
+        env:
+          # Required
+          MASTODON_TOKEN: ${{ secrets.MASTODON_TOKEN }}
+          # Optional overrides (safe defaults below if not set)
+          MASTODON_INSTANCE: ${{ vars.MASTODON_INSTANCE || 'https://mastodon.social' }}
+          MASTODON_VISIBILITY: ${{ vars.MASTODON_VISIBILITY || 'unlisted' }}
+          POST_TZ: ${{ vars.POST_TZ || 'Europe/Moscow' }}
+          # Groq (optional; if unset, code falls back to local summarizer)
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL || 'llama-3.1-8b-instant' }}
+          GROQ_MAX_OUTPUT_TOKENS: ${{ vars.GROQ_MAX_OUTPUT_TOKENS || '320' }}
+        run: python main.py
+
+      - name: Commit state updates (ETags, dedupe registry)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/state.json || true
+          git commit -m "Update state $(date -u +'%Y-%m-%dT%H:%M:%SZ')" || echo "No state changes"
+          git push
