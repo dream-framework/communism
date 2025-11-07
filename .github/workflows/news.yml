@@ -2,8 +2,8 @@ name: news-to-mastodon
 
 on:
   schedule:
-    - cron: "0,20,40 * * * *"   # primary :00/:20/:40 UTC
-    - cron: "7,27,47 * * * *"   # backup  :01/:21/:41 UTC
+    - cron: "0,15,30,45 * * * *"   # primary :00/:20/:40 UTC
+    - cron: "7,22,37,52 * * * *"   # backup  :01/:21/:41 UTC
   workflow_dispatch:
 
 permissions:
