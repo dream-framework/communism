@@ -64,6 +64,14 @@ jobs:
           FOLLOWERS_ONLY: "0"
           ALLOW_DOMAINS: ""              # empty = no allowlist
 
+         
+         
+         
+          ALLOW_SELF_ASK: "1"
+         
+         
+          ASK_CONTEXT_MODE: "none" # fastest
+
           # Run/limits
           REPLIES_VISIBILITY: ${{ vars.REPLIES_VISIBILITY || 'unlisted' }}
           MAX_REPLIES_PER_RUN: ${{ vars.MAX_REPLIES_PER_RUN || '4' }}
@@ -93,4 +101,5 @@ jobs:
           git commit -m "askbot: update state $(date -u +'%Y-%m-%dT%H:%M:%SZ')" || echo "No state changes"
 
           git push || echo "Push skipped (branch protected or no changes)"
+
 
