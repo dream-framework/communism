@@ -1,4 +1,7 @@
 {
   "self_id": "115458095951461311",
-  "self_acct": "highercause"
+  "self_acct": "highercause",
+  "since_mention_id": null,
+  "since_tag_id": null,
+  "handled_ids": []
 }
