@@ -1,0 +1,72 @@
+name: askbot
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"        # every 5 minutes
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: askbot
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feeds branch (code)
+        uses: actions/checkout@v4
+        with:
+          ref: feeds
+          path: feeds
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('feeds/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Install deps
+        working-directory: feeds
+        run: pip install -r requirements.txt
+
+      - name: Run askbot (poll mentions and reply)
+        working-directory: feeds
+        env:
+          MASTODON_TOKEN: ${{ secrets.MASTODON_TOKEN }}
+          MASTODON_INSTANCE: ${{ vars.MASTODON_INSTANCE || 'https://mastodon.social' }}
+          ASK_STATE_PATH: ${{ vars.ASK_STATE_PATH || 'data/ask_state.json' }}
+          META_PATH: ${{ vars.META_PATH || 'meta/primer.txt' }}
+          USE_META: ${{ vars.USE_META || 'auto' }}               # "auto" | "1" | "0"
+          ASK_KEYWORD: ${{ vars.ASK_KEYWORD || '#ask' }}
+          ASK_START_ONLY: ${{ vars.ASK_START_ONLY || '1' }}
+          REPLIES_VISIBILITY: ${{ vars.REPLIES_VISIBILITY || 'unlisted' }}
+          FOLLOWERS_ONLY: ${{ vars.FOLLOWERS_ONLY || '0' }}
+          MAX_REPLIES_PER_RUN: ${{ vars.MAX_REPLIES_PER_RUN || '4' }}
+          MENTION_MAX_AGE_MIN: ${{ vars.MENTION_MAX_AGE_MIN || '180' }}
+          ASK_CONTEXT_MODE: ${{ vars.ASK_CONTEXT_MODE || 'none' }} # "none" (fast) or "full"
+          MAX_ANSWER_CHARS: ${{ vars.MAX_ANSWER_CHARS || '450' }}
+          HTTP_TIMEOUT_S: ${{ vars.HTTP_TIMEOUT_S || '15' }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL || 'llama-3.1-8b-instant' }}
+          GROQ_MAX_OUTPUT_TOKENS: ${{ vars.GROQ_MAX_OUTPUT_TOKENS || '220' }}
+          ASKBOT_DEBUG: ${{ vars.ASKBOT_DEBUG || '1' }}
+        run: python askbot.py
+
+      - name: Commit askbot state (feeds branch)
+        working-directory: feeds
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ask_state.json || true
+          git commit -m "askbot: update state $(date -u +'%Y-%m-%dT%H:%M:%SZ')" || echo "No state changes"
+          git push || echo "Push skipped (branch protected or no changes)"
