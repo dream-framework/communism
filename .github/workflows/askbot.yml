@@ -38,26 +38,48 @@ jobs:
         working-directory: feeds
         run: pip install -r requirements.txt
 
-      - name: Run askbot (poll mentions and reply)
+      - name: Run askbot (poll mentions and #ask tag)
         working-directory: feeds
         env:
+          # Mastodon auth
           MASTODON_TOKEN: ${{ secrets.MASTODON_TOKEN }}
           MASTODON_INSTANCE: ${{ vars.MASTODON_INSTANCE || 'https://mastodon.social' }}
+
+          # State & meta
           ASK_STATE_PATH: ${{ vars.ASK_STATE_PATH || 'data/ask_state.json' }}
           META_PATH: ${{ vars.META_PATH || 'meta/primer.txt' }}
-          USE_META: ${{ vars.USE_META || 'auto' }}               # "auto" | "1" | "0"
+          USE_META: ${{ vars.USE_META || 'auto' }}        # "auto" | "1" | "0"
+
+          # Mention mode (fallback)
           ASK_KEYWORD: ${{ vars.ASK_KEYWORD || '#ask' }}
-          ASK_START_ONLY: ${{ vars.ASK_START_ONLY || '1' }}
+          ASK_START_ONLY: ${{ vars.ASK_START_ONLY || '0' }}  # allow '#ask' anywhere
+
+          # Public hashtag mode (ENABLE THIS)
+          ASK_TAG_ENABLE: "1"
+          ASK_TAG: "ask"
+          ASK_TAG_REQUIRE_MENTION: "0"   # anyone using #ask, no @mention needed
+          REPLY_TO_ROOT: "1"             # reply under the original top post
+
+          # Open policy — allow everybody
+          FOLLOWERS_ONLY: "0"
+          ALLOW_DOMAINS: ""              # empty = no allowlist
+
+          # Run/limits
           REPLIES_VISIBILITY: ${{ vars.REPLIES_VISIBILITY || 'unlisted' }}
-          FOLLOWERS_ONLY: ${{ vars.FOLLOWERS_ONLY || '0' }}
           MAX_REPLIES_PER_RUN: ${{ vars.MAX_REPLIES_PER_RUN || '4' }}
           MENTION_MAX_AGE_MIN: ${{ vars.MENTION_MAX_AGE_MIN || '180' }}
-          ASK_CONTEXT_MODE: ${{ vars.ASK_CONTEXT_MODE || 'none' }} # "none" (fast) or "full"
+
+          # Speed/UX
+          ASK_CONTEXT_MODE: ${{ vars.ASK_CONTEXT_MODE || 'none' }}  # 'none' is fastest
           MAX_ANSWER_CHARS: ${{ vars.MAX_ANSWER_CHARS || '450' }}
           HTTP_TIMEOUT_S: ${{ vars.HTTP_TIMEOUT_S || '15' }}
+
+          # Groq
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_MODEL: ${{ vars.GROQ_MODEL || 'llama-3.1-8b-instant' }}
           GROQ_MAX_OUTPUT_TOKENS: ${{ vars.GROQ_MAX_OUTPUT_TOKENS || '220' }}
+
+          # Debug
           ASKBOT_DEBUG: ${{ vars.ASKBOT_DEBUG || '1' }}
         run: python askbot.py
 
@@ -71,3 +93,4 @@ jobs:
           git commit -m "askbot: update state $(date -u +'%Y-%m-%dT%H:%M:%SZ')" || echo "No state changes"
 
           git push || echo "Push skipped (branch protected or no changes)"
+
