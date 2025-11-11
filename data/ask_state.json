@@ -2,6 +2,11 @@
   "self_id": "115458095951461311",
   "self_acct": "highercause",
   "since_mention_id": null,
-  "since_tag_id": null,
-  "handled_ids": []
+  "since_tag_id": "115352922330716245",
+  "handled_ids": [
+    "115352922330716245",
+    "115349796407635946",
+    "115327383379949587",
+    "115351821443953030"
+  ]
 }
