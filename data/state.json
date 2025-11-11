@@ -1,5 +1,7 @@
 {
-  "feeds": {},
+  "feeds": {
+    "https://www.zerohedge.com/fullrss2.xml": {}
+  },
   "seen": {
     "https://t.me/rian_ru/325986": "2025-11-11T04:00:03.092309+00:00",
     "eid:https://t.me/rian_ru/325986": "2025-11-11T04:00:03.092309+00:00",
