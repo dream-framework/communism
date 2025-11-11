@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os, json, time, re, html, datetime
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List
 from urllib.parse import urljoin
 
 import requests
@@ -9,41 +9,34 @@ import requests
 MASTODON_INSTANCE = os.getenv("MASTODON_INSTANCE", "https://mastodon.social").rstrip("/")
 MASTODON_TOKEN    = os.getenv("MASTODON_TOKEN", "")
 ASK_STATE_PATH    = os.getenv("ASK_STATE_PATH", "data/ask_state.json")
-
-# Optional meta text (used only if present & allowed)
-META_PATH         = os.getenv("META_PATH", "meta/primer.txt")
-USE_META          = os.getenv("USE_META", "auto").lower()   # "auto" | "1" | "0"
-MAX_META_CHARS    = int(os.getenv("MAX_META_CHARS", "1200"))
-
-# Trigger & policy
-ASK_KEYWORD       = os.getenv("ASK_KEYWORD", "#ask")                # must be at start
-ASK_START_ONLY    = os.getenv("ASK_START_ONLY", "1") == "1"         # require prefix
-REPLIES_VIS       = os.getenv("REPLIES_VISIBILITY", "unlisted")     # or "public"
-FOLLOWERS_ONLY    = os.getenv("FOLLOWERS_ONLY", "0") == "1"         # restrict to followers
+META_PATH         = os.getenv("META_PATH", "meta/primer.txt")     # optional meta/primer
+USE_META          = os.getenv("USE_META", "auto")                 # "auto" | "1" | "0"
+ASK_KEYWORD       = os.getenv("ASK_KEYWORD", "#ask")
+ASK_START_ONLY    = os.getenv("ASK_START_ONLY", "1") == "1"       # require keyword at start
+REPLIES_VIS       = os.getenv("REPLIES_VISIBILITY", "unlisted")   # or "public"
+FOLLOWERS_ONLY    = os.getenv("FOLLOWERS_ONLY", "0") == "1"
 ALLOW_ALL_DOMAINS = [x.strip().lower() for x in os.getenv("ALLOW_ALL_DOMAINS", "").split(",") if x.strip()]
 MAX_REPLIES_PER_RUN = int(os.getenv("MAX_REPLIES_PER_RUN", "4"))
-MENTION_MAX_AGE_MIN = int(os.getenv("MENTION_MAX_AGE_MIN", "180"))  # ignore very old mentions
-
-# Speed / output shaping
-ASK_CONTEXT_MODE  = os.getenv("ASK_CONTEXT_MODE", "none").lower()   # "none" (fast) | "full"
-MAX_ANSWER_CHARS  = int(os.getenv("MAX_ANSWER_CHARS", "450"))       # keep replies concise for most instances
+MENTION_MAX_AGE_MIN = int(os.getenv("MENTION_MAX_AGE_MIN", "180"))
+ASK_CONTEXT_MODE  = os.getenv("ASK_CONTEXT_MODE", "none")         # "none" (fast) or "full"
+MAX_ANSWER_CHARS  = int(os.getenv("MAX_ANSWER_CHARS", "450"))
 HTTP_TIMEOUT_S    = float(os.getenv("HTTP_TIMEOUT_S", "15"))
+INCLUDE_THREAD_MENTIONS = os.getenv("INCLUDE_THREAD_MENTIONS", "1") == "1"
 
 DEBUG = os.getenv("ASKBOT_DEBUG", "1") == "1"
 
-# Groq (fast params)
+# Groq
 GROQ_API_KEY      = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL        = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-GROQ_MAX_COMPLETION_TOKENS = int(os.getenv("GROQ_MAX_OUTPUT_TOKENS", "220"))
+GROQ_MAX_COMPLETION_TOKENS = int(os.getenv("GROQ_MAX_OUTPUT_TOKENS", "320"))
 GROQ_SYSTEM_PROMPT = os.getenv("GROQ_SYSTEM_PROMPT",
-    "Ты — лаконичный фактологичный помощник-аналитик. Отвечай быстро и по существу, 2–5 коротких предложений. "
-    "Если метатекст передан — используй его как фон (но не цитируй дословно). "
-    "Без ссылок, без эмодзи. Если данных не хватает — кратко отметь это."
+    "Ты — лаконичный фактологичный помощник-аналитик. Отвечай по существу, 3–6 предложений. "
+    "Используй предоставленный метатекст как фоновые рамки, но не цитируй его дословно. "
+    "Избегай домыслов и ссылок; если чего-то не хватает, ясно обозначь ограничения."
 )
 
 session = requests.Session()
-if MASTODON_TOKEN:
-    session.headers.update({"Authorization": f"Bearer {MASTODON_TOKEN}"})
+session.headers.update({"Authorization": f"Bearer {MASTODON_TOKEN}"})
 
 
 # ========= UTIL =========
@@ -76,15 +69,20 @@ def _iso_to_dt_utc(s: str) -> datetime.datetime:
 def _now_utc() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 
+def _url(path: str) -> str:
+    return urljoin(MASTODON_INSTANCE + "/", path.lstrip("/"))
+
 def _mastodon_get(path: str, params: Dict[str, Any] = None):
-    url = urljoin(MASTODON_INSTANCE + "/", path.lstrip("/"))
+    url = _url(path)
     r = session.get(url, params=params or {}, timeout=HTTP_TIMEOUT_S)
-    if DEBUG: print(f"[GET] {r.url} -> {r.status_code}")
+    if DEBUG:
+        p = "&".join([f"{k}={v}" for k,v in (params or {}).items()])
+        print(f"[GET] {url}{('?' + p) if p else ''} -> {r.status_code}")
     r.raise_for_status()
     return r.json()
 
 def _mastodon_post(path: str, data: Dict[str, Any], idem_key: str = ""):
-    url = urljoin(MASTODON_INSTANCE + "/", path.lstrip("/"))
+    url = _url(path)
     headers = {}
     if idem_key:
         headers["Idempotency-Key"] = idem_key
@@ -96,23 +94,27 @@ def _mastodon_post(path: str, data: Dict[str, Any], idem_key: str = ""):
     r.raise_for_status()
     return r.json()
 
-def _verify_credentials_fast(state: Dict[str, Any]) -> Dict[str, Any]:
-    # Cache self id/acct for speed; refresh if missing
-    if state.get("self_id") and state.get("self_acct"):
-        return {"id": state["self_id"], "acct": state["self_acct"]}
-    me = _mastodon_get("/api/v1/accounts/verify_credentials")
-    state["self_id"] = str(me.get("id"))
-    state["self_acct"] = me.get("acct")
-    _save_state(state)
-    return {"id": state["self_id"], "acct": state["self_acct"]}
+def _verify_credentials() -> Dict[str, Any]:
+    return _mastodon_get("/api/v1/accounts/verify_credentials")
+
+def _token_scopes() -> List[str]:
+    # Not all servers expose this; handle errors gracefully.
+    try:
+        j = _mastodon_get("/oauth/token/info")
+        scopes = j.get("scopes") or j.get("scope") or ""
+        if isinstance(scopes, str):
+            scopes = scopes.split()
+        return [s.strip() for s in scopes if s.strip()]
+    except Exception as e:
+        if DEBUG: print("[scopes] token info not available:", e)
+        return []
 
 def _relationships(ids: List[str]) -> Dict[str, Any]:
     out = {}
-    if not ids: return out
-    url = urljoin(MASTODON_INSTANCE + "/", "/api/v1/accounts/relationships")
     chunk = 80
     for i in range(0, len(ids), chunk):
         q = [("id[]", _id) for _id in ids[i:i+chunk]]
+        url = _url("/api/v1/accounts/relationships")
         r = session.get(url, params=q, timeout=HTTP_TIMEOUT_S)
         r.raise_for_status()
         for row in r.json():
@@ -123,28 +125,28 @@ def _status_context(status_id: str) -> Dict[str, Any]:
     return _mastodon_get(f"/api/v1/statuses/{status_id}/context")
 
 def _read_meta() -> str:
-    if USE_META == "0":
-        return ""
     try:
         with open(META_PATH, "r", encoding="utf-8") as f:
-            txt = f.read().strip()
-            return txt[:MAX_META_CHARS] if USE_META in ("1","auto") else ""
+            return f.read().strip()
     except Exception:
         return ""
 
 def _call_groq(prompt_user: str, meta_text: str) -> str:
-    # Fast path: if no key — return trimmed echo (never silently fail)
     if not GROQ_API_KEY:
-        return (prompt_user.strip()[:MAX_ANSWER_CHARS] or "Нет текста запроса.")
-
+        text = prompt_user.strip()
+        return text[:MAX_ANSWER_CHARS] if len(text) > MAX_ANSWER_CHARS else text
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-
-    # Use the smallest message set possible for speed
-    if meta_text:
+    use_meta = False
+    if USE_META == "1":
+        use_meta = True
+    elif USE_META == "auto":
+        use_meta = bool(meta_text.strip())
+    # Keep prompt tiny for speed:
+    if use_meta:
         user_content = f"Метатекст (фон):\n{meta_text}\n\nЗапрос:\n{prompt_user}"
     else:
-        user_content = prompt_user
+        user_content = f"Запрос:\n{prompt_user}"
 
     payload = {
         "model": GROQ_MODEL,
@@ -156,57 +158,45 @@ def _call_groq(prompt_user: str, meta_text: str) -> str:
         "n": 1,
         "max_completion_tokens": GROQ_MAX_COMPLETION_TOKENS,
     }
-
-    for attempt in range(2):  # keep it snappy
+    for attempt in range(2):  # keep it fast
+        r = requests.post(url, headers=headers, json=payload, timeout=HTTP_TIMEOUT_S)
+        if r.status_code == 429:
+            retry = int(r.headers.get("retry-after","2"))
+            time.sleep(min(3, max(1, retry))); continue
         try:
-            r = requests.post(url, headers=headers, json=payload, timeout=min(HTTP_TIMEOUT_S, 12))
-            if r.status_code == 429:
-                retry = int(r.headers.get("retry-after", "2"))
-                time.sleep(max(1, min(3, retry))); continue
             r.raise_for_status()
             j = r.json()
             txt = (j.get("choices",[{}])[0].get("message",{}) or {}).get("content","") or ""
-            txt = txt.strip()
-            if len(txt) > MAX_ANSWER_CHARS:
-                txt = txt[:MAX_ANSWER_CHARS - 1] + "…"
-            return txt or "Извините, не удалось сформировать ответ."
-        except Exception as e:
-            if DEBUG: print("[groq] error:", e)
-            time.sleep(0.8)
+            ans = txt.strip() or "Извините, не удалось сформировать ответ."
+            return ans[:MAX_ANSWER_CHARS]
+        except Exception:
+            time.sleep(0.5)
     return "Извините, сервис перегружен. Попробуйте ещё раз."
 
-def _trim_self_mentions(text: str, self_acct: str) -> str:
-    # Remove leading self-mentions (@you or @you@instance)
-    pat = r"^\s*@"+re.escape(self_acct)+r"(?:\s|:|,)+"
-    return re.sub(pat, "", text, flags=re.I).strip()
+def _build_prompt_from_thread(mention_status: Dict[str, Any], ctx: Dict[str, Any]) -> str:
+    base = _strip_html(mention_status.get("content",""))
+    parts = [f"Вопрос пользователя:\n{base}"]
+    if ASK_CONTEXT_MODE == "full":
+        ancestors = (ctx.get("ancestors") or [])[-2:]  # last two only (fast)
+        if ancestors:
+            parts.append("Контекст (фрагменты нити):")
+            for st in ancestors:
+                who = st.get("account",{}).get("acct","?")
+                txt = _strip_html(st.get("content",""))
+                parts.append(f"- @{who}: {txt}")
+    return "\n".join(parts).strip()
 
-def _extract_ask_payload(text: str, keyword: str, start_only: bool) -> Tuple[bool, str]:
-    """
-    Returns (is_triggered, payload).
-    Trigger only when the STATUS CONTENT starts with '#ask' (or env keyword),
-    allowing optional punctuation right after (#ask: …).
-    """
-    t = text.strip()
-    kw = keyword.strip()
-    if not kw:
-        return True, t
-
-    # ^\s*#ask(\b|[:\-—])\s*(.*)
-    pat = r"^\s*" + re.escape(kw) + r"(?:\b|[:\-—])\s*(.*)$"
-    m = re.search(pat, t, flags=re.I | re.S)
-    if m:
-        return True, (m.group(1) or "").strip()
-
-    if start_only:
-        return False, ""
-    # fallback (not used by default): keyword anywhere
-    anywhere = re.search(re.escape(kw), t, flags=re.I)
-    return (anywhere is not None, t) if anywhere else (False, "")
+def _looks_valid_trigger(text: str) -> bool:
+    if not ASK_KEYWORD:
+        return True
+    if ASK_START_ONLY:
+        return re.search(rf'^\s*{re.escape(ASK_KEYWORD)}\b', text, re.I) is not None
+    return re.search(re.escape(ASK_KEYWORD), text, re.I) is not None
 
 def _allowed_account(n: Dict[str, Any], self_id: str, relmap: Dict[str, Any]) -> bool:
     acct = n.get("account",{})
     if str(acct.get("id")) == str(self_id):
-        return False  # ignore ourselves
+        return False
     domain = (acct.get("acct","").split("@",1)[1].lower() if "@" in acct.get("acct","") else "")
     if ALLOW_ALL_DOMAINS and domain and domain not in ALLOW_ALL_DOMAINS:
         return False
@@ -216,10 +206,39 @@ def _allowed_account(n: Dict[str, Any], self_id: str, relmap: Dict[str, Any]) ->
             return False
     return True
 
-def _reply_text(handle_acct: str, answer: str) -> str:
-    at = "@" + handle_acct
-    return f"{at}\n\n{answer}"
+def _reply_text(status: Dict[str,Any], handle_acct: str, answer: str) -> str:
+    # Mention the asker and (optionally) others in the same status to keep the thread audience.
+    mentions = [handle_acct]
+    if INCLUDE_THREAD_MENTIONS:
+        for m in status.get("mentions", []):
+            acct = m.get("acct","").strip()
+            if acct and acct.lower() != handle_acct.lower():
+                mentions.append(acct)
+    mentions = list(dict.fromkeys(mentions))  # dedupe, preserve order
+    at_line = " ".join("@" + a for a in mentions)
+    return f"{at_line}\n\n{answer}"
 
+
+# ========= NOTIFICATIONS (v1 with v2 fallback) =========
+def _get_mentions(since_id: str | None) -> List[Dict[str,Any]]:
+    params = {"types[]": "mention"}
+    if since_id:
+        params["since_id"] = since_id
+    # Try v1 first
+    url_v1 = "/api/v1/notifications"
+    try:
+        notifs = _mastodon_get(url_v1, params=params)
+        return [n for n in notifs if n.get("type")=="mention" and n.get("status")]
+    except requests.HTTPError as e:
+        if e.response is not None and e.response.status_code == 403:
+            # Try v2
+            if DEBUG: print("[notif] v1 403; trying v2")
+            try:
+                notifs = _mastodon_get("/api/v2/notifications", params=params)
+                return [n for n in notifs if n.get("type")=="mention" and n.get("status")]
+            except Exception as e2:
+                raise e  # bubble original 403
+        raise
 
 # ========= MAIN =========
 def main():
@@ -228,37 +247,44 @@ def main():
         print("[askbot] No MASTODON_TOKEN; exit 0")
         return
 
+    # Scope sanity check (best-effort)
+    scopes = _token_scopes()
+    if scopes:
+        if DEBUG: print("[scopes]", scopes)
+        need = {"read:notifications", "write:statuses"}
+        missing = [s for s in need if s not in set(scopes)]
+        if missing:
+            print(f"[askbot] ERROR: token missing scopes {missing}. "
+                  f"Recreate token with read:notifications, write:statuses (and read:statuses).")
+            return
+
     state = _load_state()
     since_id = state.get("since_id", None)
 
-    me_fast = _verify_credentials_fast(state)
-    self_id = str(me_fast.get("id"))
-    self_acct = me_fast.get("acct")
+    me = _verify_credentials()
+    self_id = str(me.get("id"))
+    self_acct = me.get("acct")
     if DEBUG:
         print(f"[askbot] acting as @{self_acct} id={self_id} since_id={since_id}")
 
-    params = {"types[]": "mention"}
-    if since_id:
-        params["since_id"] = since_id
-    notifs = _mastodon_get("/api/v1/notifications", params=params)
+    try:
+        notifs = _get_mentions(since_id)
+    except requests.HTTPError as e:
+        if e.response is not None and e.response.status_code == 403:
+            print("[askbot] fatal: 403 on notifications — token likely lacks read:notifications "
+                  f"or server policy blocks it on {MASTODON_INSTANCE}. Re-issue token on this instance.")
+            return
+        raise
 
-    # filter & sort
-    notifs = [n for n in notifs if n.get("type")=="mention" and n.get("status")]
+    # sort oldest->newest
     notifs.sort(key=lambda n: int(n["id"]))
-
     if not notifs:
         print("[askbot] no new mentions")
         return
 
-    # relationships (followers_only support)
-    if FOLLOWERS_ONLY:
-        relmap = _relationships([str(n["account"]["id"]) for n in notifs])
-    else:
-        relmap = {}
+    relmap = _relationships([str(n["account"]["id"]) for n in notifs]) if FOLLOWERS_ONLY else {}
 
-    # Only read meta if possibly needed (speed)
-    meta_text_maybe = None  # lazy-load
-
+    meta_text = _read_meta()
     replies = 0
     newest_id = since_id
 
@@ -268,50 +294,34 @@ def main():
         created_at = _iso_to_dt_utc(st.get("created_at"))
         if (_now_utc() - created_at).total_seconds() > MENTION_MAX_AGE_MIN*60:
             if DEBUG: print(f"[askbot] skip old mention id={notif_id}")
-            newest_id = max(notif_id, newest_id or notif_id, key=int); continue
+            newest_id = max(notif_id, newest_id or notif_id, key=int)
+            continue
+
+        body_txt = _strip_html(st.get("content",""))
+        if not _looks_valid_trigger(body_txt):
+            if DEBUG: print(f"[askbot] no trigger keyword in id={notif_id}")
+            newest_id = max(notif_id, newest_id or notif_id, key=int)
+            continue
 
         if not _allowed_account(n, self_id, relmap):
             if DEBUG: print(f"[askbot] not allowed account id={notif_id}")
-            newest_id = max(notif_id, newest_id or notif_id, key=int); continue
+            newest_id = max(notif_id, newest_id or notif_id, key=int)
+            continue
 
-        body_txt = _strip_html(st.get("content",""))
-        body_txt = _trim_self_mentions(body_txt, self_acct)
-
-        triggered, payload = _extract_ask_payload(body_txt, ASK_KEYWORD, ASK_START_ONLY)
-        if not triggered or not payload:
-            if DEBUG: print(f"[askbot] no trigger/payload in id={notif_id}")
-            newest_id = max(notif_id, newest_id or notif_id, key=int); continue
-
-        # OPTIONAL: thread context (slower). Default is "none" for speed.
-        prompt_user = payload
+        # Minimal context for speed; optionally include last 2 ancestors
+        ctx = {"ancestors": []}
         if ASK_CONTEXT_MODE == "full":
-            try:
-                ctx = _status_context(str(st["id"]))
-                ancestors = (ctx.get("ancestors") or [])[-2:]
-                if ancestors:
-                    ctx_lines = []
-                    for a in ancestors:
-                        who = a.get("account",{}).get("acct","?")
-                        txt = _strip_html(a.get("content",""))
-                        if txt: ctx_lines.append(f"- @{who}: {txt}")
-                    if ctx_lines:
-                        prompt_user = f"{payload}\n\nКонтекст:\n" + "\n".join(ctx_lines)
-            except Exception as e:
-                if DEBUG: print("[askbot] context fetch failed:", e)
+            ctx = _status_context(str(st["id"]))
+        prompt_user = _build_prompt_from_thread(st, ctx)
 
-        if meta_text_maybe is None:
-            meta_text_maybe = _read_meta()
+        answer = _call_groq(prompt_user, meta_text)
 
-        # GROQ
-        answer = _call_groq(prompt_user, meta_text_maybe)
-
-        # Reply (inherit original visibility for better UX; else fallback)
         vis = st.get("visibility") or REPLIES_VIS
         idem = f"askbot:{notif_id}"
-        reply = _reply_text(n["account"]["acct"], answer)
+        reply = _reply_text(st, n["account"]["acct"], answer)
         data = {
-            "status": reply[: MAX_ANSWER_CHARS + 50],  # headroom for mention
-            "in_reply_to_id": str(st["id"]),
+            "status": reply,
+            "in_reply_to_id": str(st["id"]),  # stays in same thread
             "visibility": vis,
         }
         try:
