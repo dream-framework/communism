@@ -1,31 +1,35 @@
+#!/usr/bin/env python3
 import os, json, time, re, html, datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from urllib.parse import urljoin
 
 import requests
 
 # ========= ENV =========
-MASTODON_INSTANCE = os.getenv("MASTODON_INSTANCE", "https://defcon.social").rstrip("/")
+MASTODON_INSTANCE = os.getenv("MASTODON_INSTANCE", "https://mastodon.social").rstrip("/")
 MASTODON_TOKEN    = os.getenv("MASTODON_TOKEN", "")
-
 ASK_STATE_PATH    = os.getenv("ASK_STATE_PATH", "data/ask_state.json")
-META_PATH         = os.getenv("META_PATH", "meta/primer.txt")
-ASK_KEYWORD       = os.getenv("ASK_KEYWORD", "#ask")
-REPLIES_VIS       = os.getenv("REPLIES_VISIBILITY", "unlisted")
+META_PATH         = os.getenv("META_PATH", "meta/primer.txt")         # optional meta/TOE text file
 
-FOLLOWERS_ONLY    = os.getenv("FOLLOWERS_ONLY", "0") == "1"
-ALLOW_ALL_DOMAINS = [x.strip().lower() for x in os.getenv("ALLOW_ALL_DOMAINS", "").split(",") if x.strip()]
+ASK_KEYWORD       = os.getenv("ASK_KEYWORD", "#ask")                  # trigger token
+REPLIES_VIS       = os.getenv("REPLIES_VISIBILITY", "unlisted")       # reply visibility
+FOLLOWERS_ONLY    = os.getenv("FOLLOWERS_ONLY", "0") == "1"           # restrict to followers? default: no
+ALLOW_DOMAINS     = [x.strip().lower() for x in os.getenv("ALLOW_DOMAINS", "").split(",") if x.strip()]
 
-MAX_REPLIES_PER_RUN   = int(os.getenv("MAX_REPLIES_PER_RUN", "6"))
-MENTION_MAX_AGE_MIN   = int(os.getenv("MENTION_MAX_AGE_MIN", "240"))
-ASK_TAG_ENABLE        = os.getenv("ASK_TAG_ENABLE", "1") == "1"
-ASK_TAG_MAX_AGE_MIN   = int(os.getenv("ASK_TAG_MAX_AGE_MIN", "240"))
-ASK_TAG_LIMIT         = int(os.getenv("ASK_TAG_LIMIT", "60"))
-ASK_TAG_BOOTSTRAP     = os.getenv("ASK_TAG_BOOTSTRAP_SKIP_OLD", "1") == "1"
-REPLY_TO_ROOT         = os.getenv("REPLY_TO_ROOT", "1") == "1"
-REPLY_SLEEP_SEC       = float(os.getenv("REPLY_SLEEP_SEC", "0.8"))
-SCOPE_WARN            = os.getenv("ASK_SCOPE_WARN", "1") == "1"
-DEBUG                 = os.getenv("ASK_DEBUG", "1") == "1"
+MAX_REPLIES_PER_RUN   = int(os.getenv("MAX_REPLIES_PER_RUN", "4"))
+MENTION_MAX_AGE_MIN   = int(os.getenv("MENTION_MAX_AGE_MIN", "180"))
+
+# ---- Hashtag timeline scanning (public #ask) ----
+ASK_TAG_ENABLE            = os.getenv("ASK_TAG_ENABLE", "1") == "1"
+ASK_TAG                   = os.getenv("ASK_TAG", "ask").lstrip("#")
+ASK_TAG_REQUIRE_MENTION   = os.getenv("ASK_TAG_REQUIRE_MENTION", "0") == "1"  # if True, must @mention us too
+ASK_TAG_MAX_AGE_MIN       = int(os.getenv("ASK_TAG_MAX_AGE_MIN", "240"))
+ASK_TAG_BOOTSTRAP_SKIP_OLD= os.getenv("ASK_TAG_BOOTSTRAP_SKIP_OLD", "0") == "1"  # default now OFF
+ASK_TAG_FETCH_LIMIT       = int(os.getenv("ASK_TAG_FETCH_LIMIT", "60"))     # 40–80 is typical
+REPLY_TO_ROOT             = os.getenv("REPLY_TO_ROOT", "1") == "1"          # reply to thread root
+
+# Debug
+DEBUG = os.getenv("ASKBOT_DEBUG", "1") == "1"
 
 # Groq
 GROQ_API_KEY      = os.getenv("GROQ_API_KEY", "")
@@ -38,9 +42,7 @@ GROQ_SYSTEM_PROMPT = os.getenv("GROQ_SYSTEM_PROMPT",
 )
 
 session = requests.Session()
-if MASTODON_TOKEN:
-    session.headers.update({"Authorization": f"Bearer {MASTODON_TOKEN}"})
-
+session.headers.update({"Authorization": f"Bearer {MASTODON_TOKEN}"})
 
 # ========= UTIL =========
 def _now_utc() -> datetime.datetime:
@@ -59,11 +61,6 @@ def _strip_html(s: str) -> str:
     s = re.sub(r"</p\s*>", "\n\n", s, flags=re.I)
     s = re.sub(r"<[^>]+>", "", s)
     return html.unescape(s).strip()
-
-def _looks_valid_trigger(text: str) -> bool:
-    if not ASK_KEYWORD:
-        return True
-    return re.search(re.escape(ASK_KEYWORD), text, re.I) is not None
 
 def _load_state() -> Dict[str, Any]:
     try:
@@ -88,10 +85,7 @@ def _mastodon_get(path: str, params: Dict[str, Any] = None):
     url = urljoin(MASTODON_INSTANCE + "/", path.lstrip("/"))
     r = session.get(url, params=params or {}, timeout=30)
     if DEBUG:
-        try:
-            print(f"[GET] {r.url} -> {r.status_code}")
-        except Exception:
-            print(f"[GET] {path} -> {r.status_code}")
+        print(f"[GET] {r.url} -> {r.status_code}")
     r.raise_for_status()
     return r.json()
 
@@ -113,7 +107,6 @@ def _verify_credentials() -> Dict[str, Any]:
 
 def _relationships(ids: List[str]) -> Dict[str, Any]:
     out = {}
-    if not ids: return out
     chunk = 80
     for i in range(0, len(ids), chunk):
         q = [("id[]", _id) for _id in ids[i:i+chunk]]
@@ -127,12 +120,27 @@ def _relationships(ids: List[str]) -> Dict[str, Any]:
 def _status_context(status_id: str) -> Dict[str, Any]:
     return _mastodon_get(f"/api/v1/statuses/{status_id}/context")
 
-def _allowed_account(n: Dict[str, Any], self_id: str, relmap: Dict[str, Any]) -> bool:
-    acct = n.get("account",{})
+def _root_id(status_id: str) -> str:
+    """Return thread root id (or the same status id if already root)."""
+    try:
+        ctx = _status_context(status_id)
+        anc = ctx.get("ancestors") or []
+        if anc:
+            return str(anc[0]["id"])
+    except Exception:
+        pass
+    return status_id
+
+def _looks_valid_trigger(text: str) -> bool:
+    if not ASK_KEYWORD:
+        return True
+    return re.search(re.escape(ASK_KEYWORD), text, re.I) is not None
+
+def _allowed_account(acct: Dict[str, Any], self_id: str, relmap: Dict[str, Any]) -> bool:
     if str(acct.get("id")) == str(self_id):
-        return False
+        return False  # ignore ourselves
     domain = (acct.get("acct","").split("@",1)[1].lower() if "@" in acct.get("acct","") else "")
-    if ALLOW_ALL_DOMAINS and domain and domain not in ALLOW_ALL_DOMAINS:
+    if ALLOW_DOMAINS and domain and domain not in ALLOW_DOMAINS:
         return False
     if FOLLOWERS_ONLY:
         rel = relmap.get(str(acct.get("id")), {})
@@ -145,8 +153,8 @@ def _reply_text(handle_acct: str, answer: str) -> str:
 
 def _call_groq(prompt_user: str, meta_text: str) -> str:
     if not GROQ_API_KEY:
-        txt = prompt_user.strip()
-        return txt[:450] if len(txt) > 450 else txt
+        t = prompt_user.strip()
+        return t[:450] if len(t) > 450 else t
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     messages = [
@@ -174,257 +182,194 @@ def _call_groq(prompt_user: str, meta_text: str) -> str:
             time.sleep(1)
     return "Извините, сервис перегружен. Попробуйте ещё раз."
 
-def _build_prompt_from_thread(mention_status: Dict[str, Any], ctx: Dict[str, Any]) -> str:
-    base = _strip_html(mention_status.get("content",""))
+def _build_prompt_from_status(st: Dict[str, Any]) -> str:
+    base = _strip_html(st.get("content",""))
     parts = [f"Вопрос пользователя:\n{base}"]
-    # include two most recent ancestors for context
-    ancestors = (ctx.get("ancestors") or [])[-2:]
-    if ancestors:
-        parts.append("Контекст (фрагменты нити):")
-        for st in ancestors:
-            who = st.get("account",{}).get("acct","?")
-            txt = _strip_html(st.get("content",""))
-            parts.append(f"- @{who}: {txt}")
+    try:
+        ctx = _status_context(str(st["id"]))
+        ancestors = (ctx.get("ancestors") or [])[-2:]
+        if ancestors:
+            parts.append("Контекст (фрагменты нити):")
+            for a in ancestors:
+                who = a.get("account",{}).get("acct","?")
+                txt = _strip_html(a.get("content",""))
+                parts.append(f"- @{who}: {txt}")
+    except Exception:
+        pass
     return "\n".join(parts).strip()
 
-def _root_with_ask(status: Dict[str, Any], ctx: Dict[str, Any], ask_kw: str) -> str:
-    """Return the ID of the topmost ancestor that contains #ask (or the status itself)."""
-    kw = re.escape(ask_kw)
-    for anc in (ctx.get("ancestors") or []):
-        if re.search(kw, _strip_html(anc.get("content","")), re.I):
-            return str(anc.get("id"))
-    if re.search(kw, _strip_html(status.get("content","")), re.I):
-        return str(status.get("id"))
-    return str(status.get("id"))
-
-def _scopes() -> List[str]:
-    try:
-        j = _mastodon_get("/oauth/token/info")
-        scopes = (j.get("scopes") or "").split(" ")
-        return [s.strip() for s in scopes if s.strip()]
-    except Exception:
-        return []
-
-# ========= PROCESSORS =========
-def handle_mentions(state: Dict[str, Any], me: Dict[str, Any], meta_text: str) -> int:
-    self_id   = str(me.get("id"))
-    self_acct = me.get("acct")
-    since_id  = state.get("since_id_mentions", None)
-
+# ========= FETCHERS =========
+def _fetch_mentions(since_id: Optional[str]) -> List[Dict[str, Any]]:
     params = {"types[]": "mention"}
     if since_id: params["since_id"] = since_id
     notifs = _mastodon_get("/api/v1/notifications", params=params)
     notifs = [n for n in notifs if n.get("type")=="mention" and n.get("status")]
-    # oldest → newest
     notifs.sort(key=lambda n: int(n["id"]))
+    return notifs
 
-    if FOLLOWERS_ONLY:
-        relmap = _relationships([str(n["account"]["id"]) for n in notifs])
-    else:
-        relmap = {}
-
-    replies = 0
-    newest_id = since_id
-    replied_map = state.setdefault("replied", {})  # status_id -> ts
-
-    for n in notifs:
-        notif_id = str(n["id"])
-        st = n["status"]
-        st_id = str(st.get("id"))
-        created_at = _iso_to_dt_utc(st.get("created_at"))
-        if (_now_utc() - created_at).total_seconds() > MENTION_MAX_AGE_MIN * 60:
-            if DEBUG: print(f"[mentions] skip old id={notif_id}")
-            newest_id = max(notif_id, newest_id or notif_id, key=int); continue
-
-        # already handled?
-        if st_id in replied_map:
-            if DEBUG: print(f"[mentions] already replied st={st_id}")
-            newest_id = max(notif_id, newest_id or notif_id, key=int); continue
-
-        body_txt = _strip_html(st.get("content",""))
-        if not _looks_valid_trigger(body_txt):
-            if DEBUG: print(f"[mentions] no trigger in id={notif_id}")
-            newest_id = max(notif_id, newest_id or notif_id, key=int); continue
-
-        if not _allowed_account(n, self_id, relmap):
-            if DEBUG: print(f"[mentions] not allowed account id={notif_id}")
-            newest_id = max(notif_id, newest_id or notif_id, key=int); continue
-
-        # thread context
-        try:
-            ctx = _status_context(st_id)
-        except Exception:
-            ctx = {"ancestors":[]}
-
-        prompt_user = _build_prompt_from_thread(st, ctx)
-        answer = _call_groq(prompt_user, meta_text)
-
-        target_id = st_id
-        if REPLY_TO_ROOT:
-            target_id = _root_with_ask(st, ctx, ASK_KEYWORD)
-
-        data = {
-            "status": _reply_text(n["account"]["acct"], answer),
-            "in_reply_to_id": target_id,
-            "visibility": st.get("visibility") or REPLIES_VIS,
-        }
-        idem = f"askbot:mention:{notif_id}"
-        try:
-            _mastodon_post("/api/v1/statuses", data, idem_key=idem)
-            replies += 1
-            replied_map[st_id] = _now_utc().isoformat()
-            print(f"[mentions] replied notif={notif_id} st={st_id} → thread under {target_id}")
-        except Exception as e:
-            print(f"[mentions] post failed notif={notif_id}: {e}")
-
-        newest_id = max(notif_id, newest_id or notif_id, key=int)
-        if replies >= MAX_REPLIES_PER_RUN:
-            if DEBUG: print(f"[mentions] hit MAX_REPLIES_PER_RUN={MAX_REPLIES_PER_RUN}")
-            break
-
-        time.sleep(REPLY_SLEEP_SEC)
-
-    if newest_id:
-        state["since_id_mentions"] = newest_id
-    return replies
-
-def handle_tag_ask(state: Dict[str, Any], meta_text: str) -> int:
-    if not ASK_TAG_ENABLE:
-        if DEBUG: print("[tag] ASK_TAG_ENABLE=0 — skipped")
-        return 0
-
-    # scope hints
-    if SCOPE_WARN:
-        scopes = _scopes()
-        if scopes and ("read:statuses" not in scopes):
-            print("[warn] token missing read:statuses — public hashtag timeline might be limited.")
-
-    since_id = state.get("since_id_tag", None)
-
-    # bootstrap: on first run, optionally skip the backlog by recording top id and exiting
-    if since_id is None and ASK_TAG_BOOTSTRAP:
-        try:
-            j = _mastodon_get(f"/api/v1/timelines/tag/{ASK_KEYWORD.lstrip('#')}", params={"limit": 1})
-            if j:
-                top_id = str(j[0].get("id"))
-                state["since_id_tag"] = top_id
-                print(f"[tag] bootstrap set since_id_tag={top_id} (skipping backlog)")
-                return 0
-        except Exception as e:
-            print(f"[tag] bootstrap failed: {e}")
-        # if bootstrap fails, we just proceed normally
-
-    params = {"limit": max(1, min(80, ASK_TAG_LIMIT))}
-    if since_id:
-        params["since_id"] = since_id
-
-    try:
-        timeline = _mastodon_get(f"/api/v1/timelines/tag/{ASK_KEYWORD.lstrip('#')}", params=params)
-    except Exception as e:
-        print(f"[tag] fetch failed: {e}")
-        return 0
-
-    if not timeline:
-        if DEBUG: print("[tag] no new #ask posts")
-        return 0
-
-    # oldest → newest
-    timeline.sort(key=lambda st: int(st["id"]))
-    replies = 0
-    newest_seen = since_id
-    replied_map = state.setdefault("replied", {})  # status_id -> ts
-
-    for st in timeline:
-        # If this is a boost/reblog, reply to the original
-        if st.get("reblog"):
-            st = st["reblog"]
-
-        st_id = str(st.get("id"))
-        if st_id in replied_map:
-            if DEBUG: print(f"[tag] already replied st={st_id}")
-            newest_seen = max(st_id, newest_seen or st_id, key=int); continue
-
-        created_at = _iso_to_dt_utc(st.get("created_at"))
-        if (_now_utc() - created_at).total_seconds() > ASK_TAG_MAX_AGE_MIN * 60:
-            if DEBUG: print(f"[tag] skip old st={st_id}")
-            newest_seen = max(st_id, newest_seen or st_id, key=int); continue
-
-        acct = st.get("account", {}).get("acct", "")
-        body_txt = _strip_html(st.get("content",""))
-
-        # extra safety (though tag feed already filtered by #ask)
-        if not _looks_valid_trigger(body_txt):
-            if DEBUG: print(f"[tag] missing trigger st={st_id}")
-            newest_seen = max(st_id, newest_seen or st_id, key=int); continue
-
-        # Build prompt using thread context if available
-        try:
-            ctx = _status_context(st_id)
-        except Exception:
-            ctx = {"ancestors":[]}
-
-        prompt_user = _build_prompt_from_thread(st, ctx)
-        answer = _call_groq(prompt_user, meta_text)
-
-        target_id = st_id
-        if REPLY_TO_ROOT:
-            target_id = _root_with_ask(st, ctx, ASK_KEYWORD)
-
-        data = {
-            "status": _reply_text(acct, answer),
-            "in_reply_to_id": target_id,
-            "visibility": REPLIES_VIS,
-        }
-        idem = f"askbot:tag:{st_id}"
-        try:
-            _mastodon_post("/api/v1/statuses", data, idem_key=idem)
-            replies += 1
-            replied_map[st_id] = _now_utc().isoformat()
-            print(f"[tag] replied st={st_id} → thread under {target_id}")
-        except Exception as e:
-            print(f"[tag] post failed st={st_id}: {e}")
-
-        newest_seen = max(st_id, newest_seen or st_id, key=int)
-        if replies >= MAX_REPLIES_PER_RUN:
-            if DEBUG: print(f"[tag] hit MAX_REPLIES_PER_RUN={MAX_REPLIES_PER_RUN}")
-            break
-
-        time.sleep(REPLY_SLEEP_SEC)
-
-    if newest_seen:
-        state["since_id_tag"] = newest_seen
-    return replies
-
+def _fetch_tag_since(tag: str, since_id_tag: Optional[str]) -> List[Dict[str, Any]]:
+    params = {"limit": min(ASK_TAG_FETCH_LIMIT, 80)}
+    if since_id_tag:
+        params["since_id"] = since_id_tag
+    res = _mastodon_get(f"/api/v1/timelines/tag/{tag}", params=params)
+    # API returns newest-first; we want oldest-first for stable processing
+    res = list(res)[::-1]
+    if DEBUG:
+        sid = since_id_tag or "-"
+        print(f"[tag] got {len(res)} after since_id_tag={sid}")
+    return res
 
 # ========= MAIN =========
 def main():
     print(f"[askbot] start {_now_utc().isoformat()}")
     if not MASTODON_TOKEN:
-        print("[askbot] No MASTODON_TOKEN; exit 0")
-        return
+        print("[askbot] No MASTODON_TOKEN; exit 0"); return
+
+    # sanity: list scopes
+    try:
+        tok = _mastodon_get("/oauth/token/info")
+        scopes = (tok.get("scopes") or [])
+        if DEBUG: print("[scopes]", scopes)
+        if "read:statuses" not in scopes:
+            print("[warn] token missing read:statuses — public hashtag timeline may fail.")
+    except Exception as e:
+        if DEBUG: print("[warn] token info failed:", e)
 
     state = _load_state()
-    meta_text = _read_meta()
-
-    # Optional scope warning
-    if SCOPE_WARN:
-        try:
-            scopes = _scopes()
-            if scopes:
-                print(f"[scopes] {scopes}")
-        except Exception:
-            pass
+    since_id_mention = state.get("since_id_mention")
+    since_id_tag     = state.get("since_id_tag")
 
     me = _verify_credentials()
-    print(f"[askbot] acting as @{me.get('acct')} id={me.get('id')}")
+    self_id = str(me.get("id"))
+    self_acct = me.get("acct")
+    print(f"[askbot] acting as @{self_acct} id={self_id}")
 
-    total = 0
-    total += handle_mentions(state, me, meta_text)
-    total += handle_tag_ask(state, meta_text)
+    # ----- Mentions pass (still supported) -----
+    notifs = _fetch_mentions(since_id_mention)
+    # relationships map (only needed if FOLLOWERS_ONLY)
+    relmap = _relationships([str(n["account"]["id"]) for n in notifs]) if FOLLOWERS_ONLY else {}
 
+    processed = 0
+    newest_mention = since_id_mention
+    meta_text = _read_meta()
+
+    for n in notifs:
+        notif_id = str(n["id"])
+        st = n["status"]
+        created_at = _iso_to_dt_utc(st.get("created_at"))
+        if (_now_utc() - created_at).total_seconds() > MENTION_MAX_AGE_MIN*60:
+            if DEBUG: print(f"[mention] skip old id={notif_id}")
+            newest_mention = max(notif_id, newest_mention or notif_id, key=int)
+            continue
+
+        body_txt = _strip_html(st.get("content",""))
+        if not _looks_valid_trigger(body_txt):
+            if DEBUG: print(f"[mention] no keyword in id={notif_id}")
+            newest_mention = max(notif_id, newest_mention or notif_id, key=int)
+            continue
+
+        if not _allowed_account(n.get("account",{}), self_id, relmap):
+            if DEBUG: print(f"[mention] not allowed account id={notif_id}")
+            newest_mention = max(notif_id, newest_mention or notif_id, key=int)
+            continue
+
+        prompt_user = _build_prompt_from_status(st)
+        answer = _call_groq(prompt_user, meta_text)
+
+        # reply to root if configured
+        reply_to = _root_id(str(st["id"])) if REPLY_TO_ROOT else str(st["id"])
+        vis = st.get("visibility") or REPLIES_VIS
+        idem = f"askbot:mention:{notif_id}"
+        data = {"status": _reply_text(n["account"]["acct"], answer),
+                "in_reply_to_id": reply_to, "visibility": vis}
+        try:
+            _mastodon_post("/api/v1/statuses", data, idem_key=idem)
+            processed += 1
+            print(f"[mention] replied notif={notif_id} → in_reply_to={reply_to}")
+        except Exception as e:
+            print(f"[mention] post failed for notif={notif_id}: {e}")
+
+        newest_mention = max(notif_id, newest_mention or notif_id, key=int)
+        if processed >= MAX_REPLIES_PER_RUN:
+            print(f"[askbot] hit MAX_REPLIES_PER_RUN={MAX_REPLIES_PER_RUN}"); break
+
+    # ----- Tag pass (public #ask) -----
+    total_tag_processed = 0
+    newest_tag = since_id_tag
+    if ASK_TAG_ENABLE and processed < MAX_REPLIES_PER_RUN:
+        try:
+            # Bootstrap behavior: if we have no watermark yet
+            if since_id_tag is None:
+                posts = _fetch_tag_since(ASK_TAG, None)
+                if ASK_TAG_BOOTSTRAP_SKIP_OLD and posts:
+                    newest_tag = str(posts[-1]["id"])
+                    print(f"[tag] bootstrap set since_id_tag={newest_tag} (skipping backlog)")
+                    posts = []
+            else:
+                posts = _fetch_tag_since(ASK_TAG, since_id_tag)
+
+            # Optionally restrict to followers
+            relmap_tag = {}
+            if FOLLOWERS_ONLY and posts:
+                relmap_tag = _relationships([str(p["account"]["id"]) for p in posts])
+
+            for p in posts:
+                st_id = str(p["id"])
+                acct  = p.get("account",{})
+                txt   = _strip_html(p.get("content",""))
+                created_at = _iso_to_dt_utc(p.get("created_at"))
+
+                # Skip too old
+                if (_now_utc() - created_at).total_seconds() > ASK_TAG_MAX_AGE_MIN*60:
+                    if DEBUG: print(f"[tag] skip old st={st_id}")
+                    newest_tag = max(st_id, newest_tag or st_id, key=int); continue
+
+                # Must contain keyword
+                if not _looks_valid_trigger(txt):
+                    if DEBUG: print(f"[tag] no keyword st={st_id}")
+                    newest_tag = max(st_id, newest_tag or st_id, key=int); continue
+
+                # Optionally require mention of us
+                if ASK_TAG_REQUIRE_MENTION and f"@{self_acct}" not in txt:
+                    if DEBUG: print(f"[tag] require mention; missing in st={st_id}")
+                    newest_tag = max(st_id, newest_tag or st_id, key=int); continue
+
+                # Domain/followers filter
+                if not _allowed_account(acct, self_id, relmap_tag):
+                    if DEBUG: print(f"[tag] not allowed acct st={st_id}")
+                    newest_tag = max(st_id, newest_tag or st_id, key=int); continue
+
+                # Build answer
+                prompt_user = _build_prompt_from_status(p)
+                answer = _call_groq(prompt_user, meta_text)
+
+                # Reply to root (the #ask post itself is usually the root)
+                reply_to = _root_id(st_id) if REPLY_TO_ROOT else st_id
+                vis = p.get("visibility") or REPLIES_VIS
+                idem = f"askbot:tag:{st_id}"
+                data = {"status": _reply_text(acct.get("acct",""), answer),
+                        "in_reply_to_id": reply_to, "visibility": vis}
+                try:
+                    _mastodon_post("/api/v1/statuses", data, idem_key=idem)
+                    total_tag_processed += 1
+                    print(f"[tag] replied st={st_id} → in_reply_to={reply_to}")
+                except Exception as e:
+                    print(f"[tag] post failed st={st_id}: {e}")
+
+                newest_tag = max(st_id, newest_tag or st_id, key=int)
+                if processed + total_tag_processed >= MAX_REPLIES_PER_RUN:
+                    print(f"[askbot] hit MAX_REPLIES_PER_RUN={MAX_REPLIES_PER_RUN}")
+                    break
+
+        except requests.HTTPError as e:
+            print(f"[tag] fetch failed: {e}")
+
+    # Persist watermarks
+    if newest_mention: state["since_id_mention"] = newest_mention
+    if newest_tag:     state["since_id_tag"]     = newest_tag
     _save_state(state)
-    print(f"[askbot] done replies={total}")
 
+    print(f"[askbot] done replies={processed + total_tag_processed}")
 
 if __name__ == "__main__":
     try:
