@@ -20,7 +20,7 @@ except Exception:
 # =========================
 # CONFIG (env-driven)
 # =========================
-MASTODON_INSTANCE = os.getenv("MASTODON_INSTANCE", "https://poa.st").rstrip("/")
+MASTODON_INSTANCE = os.getenv("MASTODON_INSTANCE", "https://mastodon.social").rstrip("/")
 MASTODON_TOKEN    = os.getenv("MASTODON_TOKEN", "")             # SAFE: won’t crash if missing
 VISIBILITY        = os.getenv("MASTODON_VISIBILITY", "unlisted") # public / unlisted / private
 POST_TZ           = os.getenv("POST_TZ", "Europe/Moscow")
