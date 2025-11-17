@@ -42,7 +42,7 @@ jobs:
           # Required
           MASTODON_TOKEN: ${{ secrets.MASTODON_TOKEN }}
           # Optional overrides (safe defaults below if not set)
-          MASTODON_INSTANCE: ${{ vars.MASTODON_INSTANCE || 'https://poa.st' }}
+          MASTODON_INSTANCE: ${{ vars.MASTODON_INSTANCE || 'https://mastodon.social' }}
           MASTODON_VISIBILITY: ${{ vars.MASTODON_VISIBILITY || 'unlisted' }}
           POST_TZ: ${{ vars.POST_TZ || 'Europe/Moscow' }}
           # Groq (optional; if unset, code falls back to local summarizer)
