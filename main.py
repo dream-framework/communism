@@ -49,7 +49,7 @@ ZEROHEDGE_ENABLE_FALLBACKS = os.getenv("ZEROHEDGE_ENABLE_FALLBACKS", "1") == "1"
 # Run control
 RUN_GROUP        = os.getenv("RUN_GROUP", "").strip().lower()    # geo_analytics | markets | russia
 SLOT_OVERRIDE    = os.getenv("SLOT_OVERRIDE", "").strip()        # "0" | "1" | "2"
-POSTS_PER_RUN    = int(os.getenv("POSTS_PER_RUN", "6"))          # 5–6 typical (default 6)
+POSTS_PER_RUN    = int(os.getenv("POSTS_PER_RUN", "3"))          # 5–6 typical (default 6)
 POST_SLEEP_SEC   = float(os.getenv("POST_SLEEP_SEC", "3"))
 
 # Diversity controls
