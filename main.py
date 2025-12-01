@@ -21,7 +21,7 @@ except Exception:
 # CONFIG (env-driven)
 # =========================
 MASTODON_INSTANCE = os.getenv("MASTODON_INSTANCE", "https://mastodon.social").rstrip("/")
-MASTODON_TOKEN    = os.getenv("MASTODON_TOKEN", "")             # SAFE: won’t crash if missing
+MASTODON_TOKEN    = os.getenv("MASTODON_TOKEN", "")              # SAFE: won’t crash if missing
 VISIBILITY        = os.getenv("MASTODON_VISIBILITY", "unlisted") # public / unlisted / private
 POST_TZ           = os.getenv("POST_TZ", "Europe/Moscow")
 STATE_PATH        = os.getenv("STATE_PATH", "data/state.json")
@@ -164,7 +164,7 @@ HEADERS = {
 SOURCE_WEIGHTS = {
     "t.me": 4.2, "telegram.me": 4.0, "telegram.dog": 3.8, "telegram.im": 3.6,
     "rsshub.app": 3.4,
-    "zerohedge.com": 3.2,
+    "zerohedge.com": 5.0,  # boosted so ZH rules market-related content
 }
 
 THEME_KEYWORDS = {
@@ -415,6 +415,20 @@ def _zerohedge_variants(url: str, slot_key: str) -> List[str]:
         qb = ("&" if ("?" in out[0]) else "?") + "t=" + slot_key.replace(" ", "").replace(":", "")
     return [c + qb for c in out]
 
+def _extract_tg_handle_from_link_or_feed(link: str, feed_url: str) -> str:
+    try:
+        for u in (link, feed_url):
+            if not u:
+                continue
+            p = urlparse(u)
+            host = p.netloc.lower()
+            path = p.path.strip("/")
+            if "t.me" in host or "telegram.me" in host:
+                return path.split("/", 1)[0].lower()
+    except Exception:
+        pass
+    return ""
+
 def _fetch_rss_url(url: str, cache: dict, slot_key: str) -> List[Dict[str, Any]]:
     # ZeroHedge gets special handling (variants + browser UA + no-cache headers if needed)
     urls_to_try = _zerohedge_variants(url, slot_key) if _is_zerohedge(url) else [url]
@@ -633,9 +647,29 @@ def _diverse_with_progressive_cap(themed_scored: list, n: int, base_cap: int, mi
 
 def _select_top_for_theme_diverse(items: list, theme: str, n: int) -> list:
     themed = [dict(it) for it in items if it.get("theme") == theme]
-    if not themed: return []
-    for it in themed: it["_score"] = _score_item(it)
+    if not themed:
+        return []
+    for it in themed:
+        it["_score"] = _score_item(it)
     themed = _cluster_and_pick(themed)
+
+    # For markets: ZeroHedge rules. Fill with zerohedge.com first, then others if any slots remain.
+    if theme == "markets":
+        zh = [it for it in themed if (it.get("domain") or "").lower() == "zerohedge.com"]
+        non_zh = [it for it in themed if (it.get("domain") or "").lower() != "zerohedge.com"]
+
+        zh.sort(key=lambda x: x["_score"], reverse=True)
+        picks: list = []
+        if zh:
+            picks.extend(zh[:n])
+
+        remaining = n - len(picks)
+        if remaining > 0 and non_zh:
+            picks.extend(_diverse_with_progressive_cap(non_zh, remaining, PER_CHANNEL_CAP, MIN_DISTINCT_CHANNELS))
+
+        return picks[:n]
+
+    # Other themes keep normal diversity logic
     return _diverse_with_progressive_cap(themed, n, PER_CHANNEL_CAP, MIN_DISTINCT_CHANNELS)
 
 def select_top_per_theme(items: list, quotas: Dict[str, int]) -> list:
@@ -803,7 +837,7 @@ def main():
     after = len(items)
     print(f"[dedupe] {before} -> {after}")
 
-    # 4) Score/select with diversity
+    # 4) Score/select with diversity (ZeroHedge-dominant for markets)
     picked = select_top_per_theme(items, quotas=quotas)
     channels_in_pick = sorted(set((it.get('channel') or it.get('domain') or 'unknown') for it in picked))
     print(f"[select] picked={len(picked)} channels={channels_in_pick}")
