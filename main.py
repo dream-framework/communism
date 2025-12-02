@@ -43,7 +43,7 @@ FETCH_CONCURRENCY      = int(os.getenv("FETCH_CONCURRENCY", "10"))         # thr
 RUN_HARD_TIMEOUT_SEC   = int(os.getenv("RUN_HARD_TIMEOUT_SEC", "90"))      # stop entire run after N sec
 
 # Optional ZeroHedge site RSS fallback (not Telegram)
-ZEROHEDGE_RSS = os.getenv("ZEROHEDGE_RSS", "https://www.zerohedge.com/fullrss2.xml")
+ZEROHEDGE_RSS = os.getenv("ZEROHEDGE_RSS", "http://feeds.feedburner.com/zerohedge/feed")
 ZEROHEDGE_ENABLE_FALLBACKS = os.getenv("ZEROHEDGE_ENABLE_FALLBACKS", "1") == "1"
 
 # Run control
