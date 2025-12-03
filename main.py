@@ -782,7 +782,7 @@ def build_theme_sources() -> Dict[str, List[str]]:
         ))
         feeds[theme] = [f"tg:{h}" for h in handles]
 
-        feeds["analytics"].append("https://www.voltairenet.org/spip.php?lang=en&page=backend")
+        # feeds["analytics"].append("https://www.voltairenet.org/spip.php?lang=en&page=backend")
         
         if theme == "markets" and ZEROHEDGE_RSS:
             feeds[theme].append(ZEROHEDGE_RSS)  # non-TG fallback (handled with variants)
