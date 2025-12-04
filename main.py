@@ -704,23 +704,49 @@ def summarize_item_locally(it: Dict[str, Any]) -> str:
 def groq_summarize_item(it: Dict[str, Any]) -> str:
     if not GROQ_API_KEY:
         return summarize_item_locally(it)
+
     ctx = build_item_context(it)
     url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    user_prompt = f"""
+Сделай строгий фактический пересказ текста на русском языке.
+
+Требования к переводу и формулировкам:
+- Отвечай ТОЛЬКО на русском языке.
+- Переводи все английские слова и фразы; оригинал допускается ТОЛЬКО в круглых скобках после русского варианта для уникальных терминов и аббревиатур (например: «градиентный бустинг (gradient boosting)»).
+- Не вставляй в ответ целые предложения или большие фрагменты на английском.
+- Не добавляй домыслов, интерпретаций, мотиваций и оценочных суждений — только то, что явно содержится в тексте.
+- Сохраняй важные числа, даты, имена собственные и ключевые понятия.
+- Если фраза в оригинале двусмысленна, передай её максимально дословно, без вольных переформулировок.
+
+Формат ответа:
+1) 4–5 кратких пунктов (по одному предложению в пункте) с основными фактами.
+
+
+Текст для контекста:
+{ctx}
+""".strip()
+
     payload = {
         "model": GROQ_MODEL,
         "messages": [
             {"role": "system", "content": GROQ_SYSTEM_PROMPT},
-            {"role": "user", "content": f"Суммируй материал в 3–4 коротких предложения на русском строго по фактам. Текст для контекста:\n{ctx}"},
+            {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.0,
         "n": 1,
         "max_completion_tokens": GROQ_MAX_COMPLETION_TOKENS,
     }
+
     for _ in range(3):
         r = requests.post(url, headers=headers, json=payload, timeout=12)
         if r.status_code == 429:
-            time.sleep(min(5, max(1, int(r.headers.get("retry-after","2"))))); continue
+            time.sleep(min(5, max(1, int(r.headers.get("retry-after", "2")))))
+            continue
         try:
             r.raise_for_status()
             j = r.json()
@@ -728,6 +754,7 @@ def groq_summarize_item(it: Dict[str, Any]) -> str:
             return text.strip() or summarize_item_locally(it)
         except Exception:
             time.sleep(0.8)
+
     return summarize_item_locally(it)
 
 # =========================
