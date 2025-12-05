@@ -706,6 +706,8 @@ def summarize_item_locally(it: Dict[str, Any]) -> str:
         parts.extend([f"{x}." for x in sents[:3]])
     return " ".join(parts) if parts else "Краткой информации по статье недостаточно."
 
+
+
 def groq_summarize_item(it: Dict[str, Any]) -> str:
     if not GROQ_API_KEY:
         return summarize_item_locally(it)
@@ -722,8 +724,7 @@ def groq_summarize_item(it: Dict[str, Any]) -> str:
 
 Требования к переводу и формулировкам:
 - Отвечай ТОЛЬКО на русском языке.
-- Переводи все английские слова и фразы; оригинал допускается ТОЛЬКО в круглых скобках после русского варианта для уникальных терминов и аббревиатур (например: «градиентный бустинг (gradient boosting)»).
-- Не вставляй в ответ целые предложения или большие фрагменты на английском.
+- Переводи все английские слова и фразы; всегда отвечай только на русском.
 - Не добавляй домыслов, интерпретаций, мотиваций и оценочных суждений — только то, что явно содержится в тексте.
 - Сохраняй важные числа, даты, имена собственные и ключевые понятия.
 - Если фраза в оригинале двусмысленна, передай её максимально дословно, без вольных переформулировок.
@@ -901,9 +902,29 @@ def main():
         link_line = f"\nЧитать подробнее: {link}" if link else ""
 
         allowed_for_summary = max_chars - len(header) - len(link_line) - 1
-        core = summary.strip()
-        if len(core) > allowed_for_summary:
-            core = core[:max(0, allowed_for_summary - 1)] + "…"
+            core = summary.strip()
+            
+            if len(core) > allowed_for_summary:
+                # Take a safe slice
+                truncated = core[:max(0, allowed_for_summary - 1)]
+            
+                # Try to cut at the last sentence-ending punctuation
+                end_idx = -1
+                for ch in ".!?…":
+                    idx = truncated.rfind(ch)
+                    if idx > end_idx:
+                        end_idx = idx
+            
+                if end_idx >= 40:
+                    # Cut at the end of the last full sentence
+                    core = truncated[:end_idx + 1]
+                else:
+                    # Fall back to the last space so we don't cut a word in half
+                    space_idx = truncated.rfind(" ")
+                    if space_idx > 0:
+                        core = truncated[:space_idx] + "…"
+                    else:
+                        core = truncated + "…"
 
         content = header + core + link_line
 
