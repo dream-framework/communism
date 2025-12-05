@@ -46,11 +46,10 @@ RUN_HARD_TIMEOUT_SEC   = int(os.getenv("RUN_HARD_TIMEOUT_SEC", "90"))      # sto
 ZEROHEDGE_RSS = os.getenv("ZEROHEDGE_RSS", "http://feeds.feedburner.com/zerohedge/feed")
 ZEROHEDGE_ENABLE_FALLBACKS = os.getenv("ZEROHEDGE_ENABLE_FALLBACKS", "1") == "1"
 
-ANALYTICS_RSS_SOURCES="
-https://www.noemamag.com/feed/,
-https://www.palladiummag.com/feed/index.xml,
-https://www.quantamagazine.org/feed/
-"
+ANALYTICS_RSS_SOURCES = _split_csv(
+    "ANALYTICS_RSS_SOURCES",
+    "https://www.noemamag.com/feed/,https://www.palladiummag.com/feed/index.xml,https://www.quantamagazine.org/feed/"
+)
 
 # Run control
 RUN_GROUP        = os.getenv("RUN_GROUP", "").strip().lower()    # geo_analytics | markets | russia
@@ -816,7 +815,7 @@ def build_theme_sources() -> Dict[str, List[str]]:
         feeds[theme] = [f"tg:{h}" for h in handles]
 
         if theme == "analytics" and ANALYTICS_RSS_SOURCES:
-            feeds["analytics"].append("https://www.voltairenet.org/spip.php?lang=en&page=backend")
+            feeds[theme].extend(ANALYTICS_RSS_SOURCES)
         
         if theme == "markets" and ZEROHEDGE_RSS:
             feeds[theme].append(ZEROHEDGE_RSS)  # non-TG fallback (handled with variants)
