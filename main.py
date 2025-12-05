@@ -902,29 +902,29 @@ def main():
         link_line = f"\nЧитать подробнее: {link}" if link else ""
 
         allowed_for_summary = max_chars - len(header) - len(link_line) - 1
-            core = summary.strip()
-            
-            if len(core) > allowed_for_summary:
-                # Take a safe slice
-                truncated = core[:max(0, allowed_for_summary - 1)]
-            
-                # Try to cut at the last sentence-ending punctuation
-                end_idx = -1
-                for ch in ".!?…":
-                    idx = truncated.rfind(ch)
-                    if idx > end_idx:
-                        end_idx = idx
-            
-                if end_idx >= 40:
-                    # Cut at the end of the last full sentence
-                    core = truncated[:end_idx + 1]
+        core = summary.strip()
+        
+        if len(core) > allowed_for_summary:
+            # Take a safe slice
+            truncated = core[:max(0, allowed_for_summary - 1)]
+        
+            # Try to cut at the last sentence-ending punctuation
+            end_idx = -1
+            for ch in ".!?…":
+                idx = truncated.rfind(ch)
+                if idx > end_idx:
+                    end_idx = idx
+        
+            if end_idx >= 40:
+                # Cut at the end of the last full sentence
+                core = truncated[:end_idx + 1]
+            else:
+                # Fall back to the last space so we don't cut a word in half
+                space_idx = truncated.rfind(" ")
+                if space_idx > 0:
+                    core = truncated[:space_idx] + "…"
                 else:
-                    # Fall back to the last space so we don't cut a word in half
-                    space_idx = truncated.rfind(" ")
-                    if space_idx > 0:
-                        core = truncated[:space_idx] + "…"
-                    else:
-                        core = truncated + "…"
+                    core = truncated + "…"
 
         content = header + core + link_line
 
