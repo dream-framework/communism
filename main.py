@@ -48,7 +48,17 @@ ZEROHEDGE_ENABLE_FALLBACKS = os.getenv("ZEROHEDGE_ENABLE_FALLBACKS", "1") == "1"
 
 ANALYTICS_RSS_SOURCES = _split_csv(
     "ANALYTICS_RSS_SOURCES",
-    "https://www.noemamag.com/feed/,https://www.palladiummag.com/feed/index.xml,https://www.quantamagazine.org/feed/"
+    ",".join([
+        # NOEMA – features + tech/philosophy topics
+        "https://www.noemamag.com/article-type/feature/feed/",
+        "https://www.noemamag.com/article-topic/technology-and-the-human/feed/",
+        # Palladium – main WP feed + Substack letter
+        "https://www.palladiummag.com/feed/index.xml",
+        "https://letter.palladiummag.com/feed",
+        # Quanta – main + API host variant
+        "https://quantamagazine.org/feed/",
+        "https://api.quantamagazine.org/feed/"
+    ])
 )
 
 # Run control
