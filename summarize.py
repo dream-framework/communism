@@ -568,3 +568,9 @@ def main() -> None:
     update_last_seen_id(state, posts)
     save_state(state)
     print("[run] done")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print("[fatal] unhandled exception:", e)
