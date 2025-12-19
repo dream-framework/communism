@@ -388,7 +388,7 @@ def main() -> None:
     state = load_state()
 
     posts = get_posts(base_url, state)
-    posts = [p for p in posts if "#sum" in p['content']- and p['account']['acct']="highercause"]
+    posts = [p for p in posts if "#sum" in p['content'] and p['account']['acct']="highercause"]
     if not posts:
         print(f"[info] no new posts for #{SUM_TAG}")
         save_state(state)
