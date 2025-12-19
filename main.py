@@ -5,6 +5,7 @@ import calendar
 from datetime import timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+
 import requests, feedparser
 
 # ---- Timezone support (pytz if present, else stdlib zoneinfo) ----
@@ -87,15 +88,26 @@ GROQ_MODEL    = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 GROQ_MAX_COMPLETION_TOKENS = int(os.getenv("GROQ_MAX_OUTPUT_TOKENS", "320"))
 GROQ_SYSTEM_PROMPT = os.getenv(
     "GROQ_SYSTEM_PROMPT",
-    "Ты — лаконичный фактологичный помощник-аналитик. "
-    "Для КАЖДОЙ отдельной статьи напиши 3–4 коротких предложения на русском строго по фактам. "
-    "Без домыслов, без эмодзи, без хэштегов. Ссылки НЕ добавляй — их добавит система."
-    "Отвечай ТОЛЬКО на русском языке."
-    "Переводи все английские слова и фразы; всегда отвечай только на русском"
-    "Не добавляй домыслов, интерпретаций, мотиваций и оценочных суждений — только то, что явно содержится в тексте."
-    "Сохраняй важные числа, даты, имена собственные и ключевые понятия."
-    "Если фраза в оригинале двусмысленна, передай её максимально дословно, без вольных переформулировок."
-    "Не повторяй одну и ту же мысль много раз в одном тексте."
+    (
+        "Ты — профессиональный аналитик и редактор научно-популярных и политических текстов. "
+        "Ты делаешь краткие, логично выстроенные конспекты статей.\n\n"
+        "Требования к языку и стилю:\n"
+        "• Пиши только на грамотном литературном русском языке.\n"
+        "• Не используй английские слова, фразы и транслитерацию. "
+        "Исключение: общеизвестные аббревиатуры типа ООН, ЕС, НАТО, ВТО, БРИКС, МВФ.\n"
+        "• Подбирай нормальные русские термины, а не кальки с английского.\n"
+        "• Не используй разговорные выражения, сленг и канцелярит.\n\n"
+        "Требования к содержанию:\n"
+        "• Опирайся только на факты из исходного текста; не добавляй домыслов и оценок.\n"
+        "• Не повторяй одну и ту же мысль разными словами.\n"
+        "• Не обращайся к читателю во втором лице и не давай советов.\n"
+        "• Не используй эмодзи, хэштеги, списки и Markdown-разметку.\n\n"
+        "Формат ответа:\n"
+        "• 3–4 коротких, но содержательных предложения.\n"
+        "• Первое предложение — чёткая формулировка темы и основной идеи материала.\n"
+        "• Следующие предложения — ключевые факты, аргументы и вывод автора.\n"
+        "• Если уместно, последнее предложение аккуратно фиксирует общий вывод авторов."
+    )
 )
 
 # =========================
@@ -706,6 +718,50 @@ def select_top_per_theme(items: list, quotas: Dict[str, int]) -> list:
 # =========================
 # LLM PREP + SUMMARIZERS (per-item)
 # =========================
+
+def _cleanup_russian_summary(text: str, max_sentences: int = 4) -> str:
+    """
+    Нормализует ответ модели:
+    - убирает лишние переводы строк и пробелы
+    - убирает повторяющиеся предложения
+    - ограничивает 3–4 предложениями
+    - следит, чтобы текст заканчивался на .!?…
+    """
+    if not text:
+        return ""
+
+    # Нормализуем пробелы
+    t = re.sub(r"\s+", " ", text).strip()
+
+    # Разбиваем на предложения по .!?…
+    # (упрощённо, но работает достаточно хорошо)
+    parts = re.split(r"(?<=[\.\!\?…])\s+", t)
+    sentences = []
+    seen = set()
+
+    for s in parts:
+        s = s.strip()
+        if not s:
+            continue
+        # немного чистим технический мусор
+        s = s.lstrip("•*-— ").strip()
+        norm = s.lower()
+        if norm in seen:
+            continue
+        seen.add(norm)
+        sentences.append(s)
+        if len(sentences) >= max_sentences:
+            break
+
+    if not sentences:
+        return ""
+
+    out = " ".join(sentences).strip()
+    if out and out[-1] not in ".!?…":
+        out += "."
+
+    return out
+    
 def build_item_context(it: Dict[str, Any], max_chars: int = 2000) -> str:
     t = (it.get("title") or "").strip()
     s = (it.get("summary") or "").strip()
@@ -713,14 +769,16 @@ def build_item_context(it: Dict[str, Any], max_chars: int = 2000) -> str:
     return f"Заголовок: {t}\nКраткое описание: {s}\nURL: {l}"[:max_chars]
 
 def summarize_item_locally(it: Dict[str, Any]) -> str:
-    t = (it.get("title") or "").strip().rstrip(".")
-    s = (it.get("summary") or "").strip()
-    parts = []
-    if t: parts.append(f"{t}.")
-    if s:
-        sents = [x.strip() for x in s.replace("\n", " ").split(".") if x.strip()]
-        parts.extend([f"{x}." for x in sents[:3]])
-    return " ".join(parts) if parts else "Краткой информации по статье недостаточно."
+    """
+    Фоллбек на случай проблем с Groq:
+    даём короткое нейтральное русское описание без перевода.
+    """
+    t = (it.get("title") or "").strip()
+    if t:
+        return _cleanup_russian_summary(
+            f"Материал под заголовком «{t}». Для деталей см. оригинал по ссылке."
+        )
+    return "Материал без заголовка. Для деталей см. оригинал по ссылке."
 
 
 
@@ -734,32 +792,27 @@ def groq_summarize_item(it: Dict[str, Any]) -> str:
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json",
     }
-
-    user_prompt = f"""
-Сделай строгий фактический пересказ текста на русском языке.
-
-Требования к переводу и формулировкам:
-- Отвечай ТОЛЬКО на русском языке.
-- Переводи все английские слова и фразы; всегда отвечай только на русском
-- Не добавляй домыслов, интерпретаций, мотиваций и оценочных суждений — только то, что явно содержится в тексте.
-- Сохраняй важные числа, даты, имена собственные и ключевые понятия.
-- Если фраза в оригинале двусмысленна, передай её максимально дословно, без вольных переформулировок.
-- Не повторяй одну и ту же мысль много раз в одном тексте.
-
-Формат ответа:
-4–5 кратких пунктов (по 2-3 предложения в пункте) с основными фактами. Пункты не нумеруй, а формируй отдельными параграфами. Начинай текст заголовком, только по-русски , отражающим суть материала. 
-Не повторяй одно и то же предложение в посте.
-
-
-Текст для контекста:
-{ctx}
-""".strip()
-
     payload = {
         "model": GROQ_MODEL,
         "messages": [
             {"role": "system", "content": GROQ_SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
+            {
+                "role": "user",
+                "content": (
+                    "Ниже приведены заголовок, краткое описание и ссылка на материал. "
+                    "Сделай краткий логичный конспект.\n\n"
+                    "СТРОГО соблюдай требования:\n"
+                    "• Ответ только на русском языке.\n"
+                    "• Не используй английские слова, фразы и транслитерацию "
+                    "(кроме общепринятых аббревиатур вроде ООН, ЕС, НАТО, МВФ, ВТО, БРИКС).\n"
+                    "• 3–4 предложения.\n"
+                    "• Не повторяй одну и ту же мысль разными словами.\n"
+                    "• Только факты из текста, без домыслов и оценок.\n"
+                    "• Без списков, эмодзи, хэштегов и обращений к читателю.\n\n"
+                    "Контекст статьи:\n"
+                    f"{ctx}"
+                ),
+            },
         ],
         "temperature": 0.0,
         "n": 1,
@@ -767,18 +820,23 @@ def groq_summarize_item(it: Dict[str, Any]) -> str:
     }
 
     for _ in range(3):
-        r = requests.post(url, headers=headers, json=payload, timeout=12)
-        if r.status_code == 429:
-            time.sleep(min(5, max(1, int(r.headers.get("retry-after", "2")))))
-            continue
         try:
+            r = requests.post(url, headers=headers, json=payload, timeout=12)
+            if r.status_code == 429:
+                # rate limit → подождать и попробовать ещё раз
+                delay = min(5, max(1, int(r.headers.get("retry-after", "2"))))
+                time.sleep(delay)
+                continue
             r.raise_for_status()
             j = r.json()
-            text = (j.get("choices", [{}])[0].get("message", {}) or {}).get("content", "") or ""
-            return text.strip() or summarize_item_locally(it)
+            raw = (j.get("choices", [{}])[0].get("message", {}) or {}).get("content", "") or ""
+            cleaned = _cleanup_russian_summary(raw)
+            if cleaned:
+                return cleaned
         except Exception:
             time.sleep(0.8)
 
+    # Фоллбек — лаконичный русский текст без перевода
     return summarize_item_locally(it)
 
 # =========================
