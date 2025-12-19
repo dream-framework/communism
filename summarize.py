@@ -479,7 +479,8 @@ def main() -> None:
     # 2) Грузим состояние
     state = load_state()
 
-    # 3) Определяем свой аккаунт по токену
+    # 3) Определяем аккаунт, к которому привязан токен
+    print("[mastodon] resolving account from access token...")
     my_account = get_own_account(base_url)
     if not my_account:
         print("[mastodon] cannot determine own account; aborting")
@@ -487,7 +488,7 @@ def main() -> None:
 
     my_id = my_account.get("id")
     my_acct = my_account.get("acct")
-    print(f"[debug] my account id={my_id}, acct={my_acct}")
+    print(f"[mastodon] using account id={my_id}, acct={my_acct}")
 
     if not my_id:
         print("[mastodon] own account id is missing; aborting")
@@ -512,18 +513,16 @@ def main() -> None:
             f"[info] not enough new posts for #{SUM_TAG}: "
             f"{len(posts)} < {MIN_POSTS_TO_SUMMARIZE}"
         )
-        # всё равно помечаем эти посты как просмотренные, чтобы не зацикливаться
         update_last_seen_id(state, posts)
         save_state(state)
         return
 
     # 6) Делаем сводку через Groq
-    summary = groq_summarize_posts(posts)
-    summary = summary.strip()
+    print(f"[groq] summarizing {len(posts)} posts...")
+    summary = groq_summarize_posts(posts).strip()
 
     if not summary:
         print("[info] Groq summary is empty; skipping post")
-        # но отметим, что эти посты мы уже видели
         update_last_seen_id(state, posts)
         save_state(state)
         return
@@ -552,7 +551,6 @@ def main() -> None:
     allowed_for_summary = max_chars - len(header) - len(links_block) - 1
 
     if allowed_for_summary < 80:
-        # если совсем мало места — выкинем блок ссылок
         links_block = ""
         allowed_for_summary = max_chars - len(header) - 1
 
