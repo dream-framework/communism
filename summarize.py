@@ -4,17 +4,68 @@ import re
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
+
+
+
+STATE_PATH = os.getenv("STATE_PATH", "data/state.json")
+
 MASTODON = os.environ["MASTODON_INSTANCE"]
 TOKEN = os.environ["MASTODON_TOKEN"]
 GROQ = os.environ["GROQ_API_KEY"]
 HEADERS = {"Authorization": f"Bearer {TOKEN}"}
 STATE_FILE = "state.json"
-def load_state():
-   with open(STATE_FILE) as f:
-       return json.load(f)
-def save_state(state):
-   with open(STATE_FILE, "w") as f:
-       json.dump(state, f)
+
+def load_state() -> dict:
+    """
+    Загружает состояние из файла. Если файл отсутствует, пустой или повреждён —
+    аккуратно инициализирует новое состояние.
+    """
+    state: dict = {}
+
+    if not os.path.exists(STATE_PATH):
+        print(f"[state] no existing state at {STATE_PATH}, starting fresh")
+        return {"feeds": {}, "seen": {}}
+
+    try:
+        with open(STATE_PATH, "r", encoding="utf-8") as f:
+            raw = f.read().strip()
+            if not raw:
+                raise ValueError("empty state file")
+            state = json.loads(raw)
+    except Exception as e:
+        # Любая ошибка парсинга → не падаем, а создаём новое состояние
+        print(f"[state] WARNING: invalid or corrupted state file ({e}); reinitializing")
+        state = {}
+
+    if not isinstance(state, dict):
+        state = {}
+
+    # Гарантируем необходимые ключи
+    if not isinstance(state.get("feeds"), dict):
+        state["feeds"] = {}
+    if not isinstance(state.get("seen"), dict):
+        state["seen"] = {}
+
+    return state
+
+
+def save_state(state: dict) -> None:
+    """
+    Безопасная запись состояния: сначала во временный файл, потом atomic rename.
+    Это снижает риск частично записанного JSON при обрыве.
+    """
+    os.makedirs(os.path.dirname(STATE_PATH) or ".", exist_ok=True)
+    tmp_path = STATE_PATH + ".tmp"
+
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+
+    os.replace(tmp_path, STATE_PATH)
+    print(f"[state] saved to {STATE_PATH}")
+
+
 def get_posts():
    r = requests.get(
        f"{MASTODON}/api/v1/timelines/tag/sum",
