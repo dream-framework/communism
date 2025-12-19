@@ -370,79 +370,173 @@ def groq_summarize_posts(posts: List[Dict[str, Any]]) -> str:
 
     return ""
 
+def get_own_account(base_url: str):
+    """
+    Возвращает JSON своего аккаунта по access token (тот, которым крутится бот).
+    """
+    if not MASTODON_TOKEN:
+        print("[mastodon] MASTODON_TOKEN is not set; cannot get own account")
+        return None
+
+    url = f"{base_url}/api/v1/accounts/verify_credentials"
+    headers = {
+        "Authorization": f"Bearer {MASTODON_TOKEN}",
+        "User-Agent": USER_AGENT,
+    }
+    r = requests.get(url, headers=headers, timeout=10)
+    r.raise_for_status()
+    return r.json()
+
+
+def get_my_tagged_posts(base_url: str, state: dict, my_id: str) -> List[Dict[str, Any]]:
+    """
+    Берёт только мои статусы с нужным тегом:
+    /api/v1/accounts/{my_id}/statuses?tagged=SUM_TAG&since_id=...
+    """
+    last_id = state.get("last_seen_id")
+    params = {
+        "limit": str(MAX_POSTS_PER_SUMMARY),
+        "exclude_replies": "true",
+        "exclude_reblogs": "true",
+        "tagged": SUM_TAG,  # пусть сервер сам фильтрует по тегу
+    }
+    if last_id:
+        params["since_id"] = str(last_id)
+
+    url = f"{base_url}/api/v1/accounts/{my_id}/statuses"
+    headers = {
+        "User-Agent": USER_AGENT,
+    }
+    if MASTODON_TOKEN:
+        headers["Authorization"] = f"Bearer {MASTODON_TOKEN}"
+
+    r = requests.get(url, headers=headers, params=params, timeout=15)
+    r.raise_for_status()
+    data = r.json()
+
+    if not isinstance(data, list):
+        print("[mastodon] unexpected response format from account statuses (not list)")
+        return []
+
+    tag_lower = SUM_TAG.lower()
+
+    def has_tag(st: Dict[str, Any]) -> bool:
+        # нормальный способ — через поле tags
+        for tg in st.get("tags", []):
+            if str(tg.get("name", "")).lower() == tag_lower:
+                return True
+        # запасной вариант — по тексту
+        text = html_to_text(st.get("content") or "")
+        return f"#{tag_lower}" in text.lower()
+
+    filtered = [st for st in data if has_tag(st)]
+
+    def _id_int(p: Dict[str, Any]) -> int:
+        pid = str(p.get("id", "0"))
+        try:
+            return int(pid)
+        except Exception:
+            return 0
+
+    filtered.sort(key=_id_int)
+    return filtered
+
+
+def update_last_seen_id(state: dict, posts: List[Dict[str, Any]]) -> None:
+    """
+    Обновляет last_seen_id в state до максимального id из списка постов.
+    """
+    max_val = None
+    max_raw = None
+    for p in posts:
+        pid = p.get("id")
+        if pid is None:
+            continue
+        try:
+            val = int(str(pid))
+        except Exception:
+            continue
+        if max_val is None or val > max_val:
+            max_val = val
+            max_raw = str(pid)
+    if max_raw is not None:
+        state["last_seen_id"] = max_raw
 
 # =========================
 # MAIN
 # =========================
 
-
 def main() -> None:
     print(f"[run] start {datetime.datetime.utcnow().isoformat()}Z")
 
+    # 1) Нормализуем URL инстанса
     try:
         base_url = normalize_instance_url(MASTODON_INSTANCE)
     except RuntimeError as e:
         print("[config] ERROR:", e)
         return
 
+    # 2) Грузим состояние
     state = load_state()
 
-    posts = get_posts(base_url, state)
-    posts = [p for p in posts if "#sum" in p['content'] and p['account']['acct'] == "highercause"]
+    # 3) Определяем свой аккаунт по токену
+    my_account = get_own_account(base_url)
+    if not my_account:
+        print("[mastodon] cannot determine own account; aborting")
+        return
+
+    my_id = my_account.get("id")
+    my_acct = my_account.get("acct")
+    print(f"[debug] my account id={my_id}, acct={my_acct}")
+
+    if not my_id:
+        print("[mastodon] own account id is missing; aborting")
+        return
+
+    # 4) Берём только МОИ посты с тегом SUM_TAG
+    posts = get_my_tagged_posts(base_url, state, my_id)
+    print(f"[debug] got {len(posts)} own posts with tag #{SUM_TAG}")
+
     if not posts:
-        print(f"[info] no new posts for #{SUM_TAG}")
+        print(f"[info] no new posts for #{SUM_TAG} from this account")
+        # state не трогаем — пусть since_id останется прежним
         save_state(state)
         return
 
-    # берём только последние MAX_POSTS_PER_SUMMARY постов, если их слишком много
+    # 5) Ограничиваем количество постов
     if len(posts) > MAX_POSTS_PER_SUMMARY:
-        posts = posts[-MAX_POSTS_PER_SUMMARY :]
+        posts = posts[-MAX_POSTS_PER_SUMMARY:]
 
     if len(posts) < MIN_POSTS_TO_SUMMARIZE:
-        print(f"[info] not enough new posts for #{SUM_TAG}: {len(posts)} < {MIN_POSTS_TO_SUMMARIZE}")
-        # всё равно обновим last_seen_id, чтобы не зацикливаться
-        try:
-            max_id = None
-            for p in posts:
-                pid = p.get("id")
-                if pid is None:
-                    continue
-                if max_id is None or int(pid) > int(max_id):
-                    max_id = pid
-            if max_id is not None:
-                state["last_seen_id"] = max_id
-        except Exception:
-            pass
+        print(
+            f"[info] not enough new posts for #{SUM_TAG}: "
+            f"{len(posts)} < {MIN_POSTS_TO_SUMMARIZE}"
+        )
+        # всё равно помечаем эти посты как просмотренные, чтобы не зацикливаться
+        update_last_seen_id(state, posts)
         save_state(state)
         return
 
+    # 6) Делаем сводку через Groq
     summary = groq_summarize_posts(posts)
     summary = summary.strip()
 
     if not summary:
         print("[info] Groq summary is empty; skipping post")
-        # но всё равно отметим, что мы эти посты видели
-        try:
-            max_id = None
-            for p in posts:
-                pid = p.get("id")
-                if pid is None:
-                    continue
-                if max_id is None or int(pid) > int(max_id):
-                    max_id = pid
-            if max_id is not None:
-                state["last_seen_id"] = max_id
-        except Exception:
-            pass
+        # но отметим, что эти посты мы уже видели
+        update_last_seen_id(state, posts)
         save_state(state)
         return
 
+    # 7) Собираем заголовок и источники
     now = datetime.datetime.now(timezone.utc)
-    header = f"🧾 Сводка по хэштегу #{SUM_TAG} — {now.strftime('%d.%m.%Y %H:%M UTC')}\n\n"
+    header = (
+        f"🧾 Сводка по хэштегу #{SUM_TAG} — "
+        f"{now.strftime('%d.%m.%Y %H:%M UTC')}\n\n"
+    )
 
-    # Собираем несколько уникальных ссылок на исходные посты (новые → сверху)
     links: List[str] = []
-    for p in reversed(posts):
+    for p in reversed(posts):  # от новых к старым
         url = p.get("url") or ""
         if url and url not in links:
             links.append(url)
@@ -453,42 +547,26 @@ def main() -> None:
     if links:
         links_block = "\n\nИсточники:\n" + "\n".join(f"- {u}" for u in links)
 
+    # 8) Учитываем лимит символов инстанса
     max_chars = get_instance_max_chars(base_url)
     allowed_for_summary = max_chars - len(header) - len(links_block) - 1
+
     if allowed_for_summary < 80:
-        # если совсем мало места — выкинем ссылки
+        # если совсем мало места — выкинем блок ссылок
         links_block = ""
         allowed_for_summary = max_chars - len(header) - 1
 
     summary = safe_truncate(summary, allowed_for_summary)
     status_text = header + summary + links_block
 
+    # 9) Публикуем сводку
     try:
         resp = post_to_mastodon(base_url, status_text, VISIBILITY)
         print("[post] summary posted:", resp.get("url", "(no url)"))
     except Exception as e:
         print("[post] ERROR:", e)
 
-    # Обновляем last_seen_id только после попытки поста
-    try:
-        max_id = None
-        for p in posts:
-            pid = p.get("id")
-            if pid is None:
-                continue
-            if max_id is None or int(pid) > int(max_id):
-                max_id = pid
-        if max_id is not None:
-            state["last_seen_id"] = max_id
-    except Exception:
-        pass
-
+    # 10) Обновляем last_seen_id после попытки поста
+    update_last_seen_id(state, posts)
     save_state(state)
     print("[run] done")
-
-
-if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print("[fatal] unhandled exception:", e)
