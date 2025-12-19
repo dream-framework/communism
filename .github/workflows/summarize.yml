@@ -1,26 +1,50 @@
 name: Mastodon #sum Summarizer
+
 on:
- schedule:
-   - cron: "*/2 * * * *"
-   
- workflow_dispatch:
+  schedule:
+    - cron: "*/2 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write  # needed to push state.json
+
 jobs:
- run:
-   runs-on: ubuntu-latest
-   steps:
-     - uses: actions/checkout@v4
-     - uses: actions/setup-python@v5
-       with:
-         python-version: "3.11"
-     - run: pip install -r requirements.txt
-     - run: python summarize.py
-       env:
-         MASTODON_INSTANCE: ${{ secrets.MASTODON_INSTANCE }}
-         MASTODON_TOKEN: ${{ secrets.MASTODON_TOKEN }}
-         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-     - run: |
-         git config user.name "summarizer-bot"
-         git config user.email "bot@users.noreply.github.com"
-         git add state.json
-         git commit -m "Update state" || true
-         git push
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out sum branch
+        uses: actions/checkout@v4
+        with:
+          ref: sum          
+          fetch-depth: 0     
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run summarizer
+        run: python summarize.py
+        env:
+          MASTODON_INSTANCE: ${{ secrets.MASTODON_INSTANCE }}
+          MASTODON_TOKEN: ${{ secrets.MASTODON_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+      - name: Commit state
+        run: |
+          git config user.name "summarizer-bot"
+          git config user.email "bot@users.noreply.github.com"
+
+          # make sure we're on a local branch, not detached HEAD
+          git checkout -B sum
+
+          # adjust path if your STATE_PATH is data/state.json
+          git add data/state.json || git add state.json || true
+
+          git commit -m "Update state" || echo "No changes to commit"
+          git push origin sum
