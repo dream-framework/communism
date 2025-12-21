@@ -719,48 +719,51 @@ def select_top_per_theme(items: list, quotas: Dict[str, int]) -> list:
 # LLM PREP + SUMMARIZERS (per-item)
 # =========================
 
-def _cleanup_russian_summary(text: str, max_sentences: int = 4) -> str:
+def _cleanup_russian_summary(text: str, max_paragraphs: int = 4) -> str:
     """
     Нормализует ответ модели:
-    - убирает лишние переводы строк и пробелы
-    - убирает повторяющиеся предложения
-    - ограничивает 3–4 параграфами
-    - следит, чтобы текст заканчивался на .!?…
+    - сохраняет структуру абзацев (разделённых пустой строкой)
+    - убирает лишние пробелы внутри абзацев
+    - удаляет повторяющиеся абзацы
+    - ограничивает количество абзацев
+    - следит, чтобы каждый абзац заканчивался на .!?…
     """
     if not text:
         return ""
 
-    # Нормализуем пробелы
-    t = re.sub(r"\s+", " ", text).strip()
+    # Нормализуем переносы строк
+    t = text.replace("\r\n", "\n").strip()
 
-    # Разбиваем на предложения по .!?…
-    # (упрощённо, но работает достаточно хорошо)
-    parts = re.split(r"(?<=[\.\!\?…])\s+", t)
-    sentences = []
+    # Делим по пустым строкам на абзацы
+    raw_paras = re.split(r"\n\s*\n", t)
+    paras: list[str] = []
     seen = set()
 
-    for s in parts:
-        s = s.strip()
-        if not s:
+    for p in raw_paras:
+        p = p.strip()
+        if not p:
             continue
-        # немного чистим технический мусор
-        s = s.lstrip("•*-— ").strip()
-        norm = s.lower()
+
+        # Внутри абзаца лишние пробелы схлопываем, но переносы между абзацами НЕ трогаем
+        p_clean = re.sub(r"\s+", " ", p).strip()
+        norm = p_clean.lower()
         if norm in seen:
             continue
         seen.add(norm)
-        sentences.append(s)
-        if len(sentences) >= max_sentences:
+
+        # Чтобы абзац не обрывался на полуслове
+        if p_clean and p_clean[-1] not in ".!?…":
+            p_clean += "."
+
+        paras.append(p_clean)
+        if len(paras) >= max_paragraphs:
             break
 
-    if not sentences:
+    if not paras:
         return ""
 
-    out = " ".join(sentences).strip()
-    if out and out[-1] not in ".!?…":
-        out += "."
-
-    return out
+    # Соединяем абзацы через пустую строку
+    return "\n\n".join(paras)
     
 def build_item_context(it: Dict[str, Any], max_chars: int = 2000) -> str:
     t = (it.get("title") or "").strip()
