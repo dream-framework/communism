@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Калькулятор NPR (NPV→NPR) • DREAM/S2</title>
+<style>
+:root{
+  --bg:#0e1117;
+  --panel:#161b26;
+  --border:#2a3142;
+  --text:#e6e8ee;
+  --muted:#aab0c0;
+  --muted2:#7f879b;
+  --good:#7bd389;
+  --bad:#ff6b6b;
+  --neutral:#5da9ff;
+  --warn:#ffd166;
+  --shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html, body{
+  height:100%;
+  margin:0;
+  overflow:hidden; /* один экран на десктопе */
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+.container{
+  height:100vh;
+  padding:12px;
+  max-width:1440px;
+  margin:0 auto;
+  display:grid;
+  grid-template-rows: auto 1fr;
+  gap:10px;
+  overflow:hidden;
+}
+header{
+  display:grid;
+  grid-template-columns: 1fr auto;
+  gap:12px;
+  align-items:start;
+}
+header h1{
+  margin:0;
+  font-size:17px;
+  font-weight:900;
+  letter-spacing:.15px;
+  line-height:1.15;
+}
+.kicker{
+  margin:6px 0 0 0;
+  color:var(--muted);
+  font-size:12.25px;
+  line-height:1.30;
+  display:-webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow:hidden;
+}
+.badge-row{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  padding-top:2px;
+  max-width:620px;
+}
+.badge, .langbtn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:5px 9px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:rgba(255,255,255,.03);
+  color:var(--muted);
+  font-size:11.5px;
+  white-space:nowrap;
+}
+
+.flagwrap{display:inline-flex; align-items:center; gap:8px;}
+.flagicon{width:18px; height:12px; border-radius:3px; display:inline-block; background-size:cover; background-position:center; box-shadow:0 0 0 1px rgba(0,0,0,.25) inset;}
+.flagicon.en{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='36' viewBox='0 0 60 36'%3E%3CclipPath id='c'%3E%3Crect width='60' height='36' rx='2' ry='2'/%3E%3C/clipPath%3E%3Cg clip-path='url(%23c)'%3E%3Crect width='60' height='36' fill='%23012169'/%3E%3Cpath d='M0 0 L60 36 M60 0 L0 36' stroke='%23fff' stroke-width='8'/%3E%3Cpath d='M0 0 L60 36 M60 0 L0 36' stroke='%23C8102E' stroke-width='4'/%3E%3Cpath d='M30 0 v36 M0 18 h60' stroke='%23fff' stroke-width='12'/%3E%3Cpath d='M30 0 v36 M0 18 h60' stroke='%23C8102E' stroke-width='7'/%3E%3C/g%3E%3C/svg%3E");}
+.flagicon.ru{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='36' viewBox='0 0 60 36'%3E%3Crect width='60' height='12' y='0' fill='%23fff'/%3E%3Crect width='60' height='12' y='12' fill='%230039A6'/%3E%3Crect width='60' height='12' y='24' fill='%23D52B1E'/%3E%3C/svg%3E");}
+.flaglabel{font-weight:800; letter-spacing:.3px; font-size:11px; color:var(--text);}
+.langbtn{
+  cursor:pointer;
+  color:var(--text);
+  background:rgba(93,169,255,.10);
+  border-color: rgba(93,169,255,.45);
+}
+.langbtn:active{transform:translateY(1px)}
+.dot{width:9px;height:9px;border-radius:50%;}
+.dot.good{background:var(--good)}
+.dot.bad{background:var(--bad)}
+.dot.warn{background:var(--warn)}
+.dot.neutral{background:var(--neutral)}
+
+.main{
+  display:grid;
+  grid-template-columns: 1fr 420px;
+  gap:10px;
+  min-height:0;
+}
+.card{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:14px;
+  box-shadow: var(--shadow);
+  min-height:0;
+  overflow:hidden;
+}
+
+/* Chart card */
+.chart{
+  display:grid;
+  grid-template-rows: 1fr auto;
+  min-height:0;
+}
+.chartArea{
+  position:relative;
+  padding:10px;
+  min-height:0;
+  display:flex;
+}
+.canvasWrap{
+  flex:1;
+  min-height:0;
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+  background:#0c1019;
+  display:flex;
+}
+canvas{
+  flex:1;
+  width:100%;
+  height:100%;
+  display:block;
+}
+.legendOverlay{
+  position:absolute;
+  left:18px;
+  top:18px;
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid rgba(42,49,66,.9);
+  background:rgba(12,16,25,.85);
+  backdrop-filter: blur(6px);
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 12px;
+  align-items:center;
+  color:var(--muted);
+  font-size:12px;
+  max-width: calc(100% - 36px);
+}
+.legendOverlay span{display:inline-flex; align-items:center; gap:8px; white-space:nowrap;}
+.sw{width:12px;height:12px;border-radius:4px;}
+.sw.bad{background:var(--bad)}
+.sw.good{background:var(--good)}
+.sw.warn{background:var(--warn)}
+.sw.neutral{background:var(--neutral)}
+.sw.band{background:rgba(255,209,102,.55)}
+.chartFooter{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  padding:9px 12px;
+  border-top:1px solid var(--border);
+  color:var(--muted);
+  font-size:12px;
+}
+#footerLeft{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+#footerRight{color:var(--muted2); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:62%;}
+
+/* Panel */
+.panel{
+  display:grid;
+  grid-template-rows: auto 1fr;
+  min-height:0;
+}
+.tabbar{
+  display:flex;
+  gap:8px;
+  padding:10px;
+  border-bottom:1px solid var(--border);
+  flex-wrap:wrap;
+}
+.tabbar button{
+  background:rgba(255,255,255,.06);
+  border:1px solid var(--border);
+  color:var(--text);
+  padding:7px 10px;
+  border-radius:10px;
+  cursor:pointer;
+  font-size:12px;
+}
+.tabbar button.active{border-color:rgba(93,169,255,.6); background:rgba(93,169,255,.10);}
+
+.tabcontent{
+  padding:12px;
+  min-height:0;
+  overflow:hidden;
+}
+.tabpane{display:none; height:100%;}
+.tabpane.active{display:block;}
+
+h2{
+  margin:0 0 8px 0;
+  font-size:13px;
+  font-weight:900;
+}
+.small{
+  margin:8px 0 0 0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.32;
+}
+.callout{
+  border:1px solid rgba(93,169,255,.35);
+  background:rgba(93,169,255,.08);
+  padding:10px 10px;
+  border-radius:12px;
+  color:var(--text);
+  font-size:12.5px;
+  line-height:1.25;
+  margin-bottom:8px;
+}
+.bullets{
+  margin:8px 0 10px 16px;
+  padding:0;
+  color:var(--muted);
+  font-size:12.5px;
+  line-height:1.22;
+}
+.bullets li{margin:6px 0;}
+hr.sep{
+  border:none;
+  border-top:1px solid var(--border);
+  margin:10px 0;
+}
+.controls{display:grid; gap:9px;}
+.control{display:grid; gap:6px;}
+label{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  font-size:12px;
+  color:var(--muted);
+}
+label b{color:var(--text); font-weight:900;}
+input[type=range]{width:100%}
+.btnrow{display:flex; flex-wrap:wrap; gap:8px;}
+button{
+  background:rgba(255,255,255,.06);
+  border:1px solid var(--border);
+  color:var(--text);
+  padding:7px 10px;
+  border-radius:10px;
+  cursor:pointer;
+  font-size:12px;
+}
+button.primary{border-color:rgba(93,169,255,.55)}
+button.good{border-color:rgba(123,211,137,.55)}
+button.danger{border-color:rgba(255,107,107,.55)}
+.toggle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--muted);
+  font-size:12px;
+}
+.toggle input{transform: translateY(1px);}
+
+/* Responsive */
+@media (max-width: 980px){
+  html, body{overflow:auto;}
+  .container{height:auto; overflow:visible;}
+  .main{grid-template-columns:1fr;}
+  #footerRight{max-width:none;}
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <header>
+    <div>
+      <h1 id="t_h1"></h1>
+      <p class="kicker" id="t_kicker"></p>
+    </div>
+    <div class="badge-row">
+      <button class="langbtn" id="langBtn" aria-label="Toggle language"><span class="flagwrap"><span id="flagIcon" class="flagicon"></span><span id="flagLabel" class="flaglabel"></span></span></button>
+      <div class="badge"><span class="dot bad"></span><span id="t_badge_extraction"></span></div>
+      <div class="badge"><span class="dot good"></span><span id="t_badge_coherence"></span></div>
+      <div class="badge"><span class="dot neutral"></span><span id="t_badge_debt"></span></div>
+      <div class="badge"><span class="dot warn"></span><span id="t_badge_age"></span></div>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- Chart -->
+    <section class="card chart">
+      <div class="chartArea">
+        <div class="legendOverlay" aria-hidden="true">
+          <span><span class="sw bad"></span><span id="t_legend_extraction"></span></span>
+          <span><span class="sw good"></span><span id="t_legend_coherence"></span></span>
+          <span><span class="sw neutral"></span><span id="t_legend_debt"></span></span>
+          <span><span class="sw warn"></span><span id="t_legend_age"></span></span>
+          <span><span class="sw band"></span><span id="t_legend_band"></span></span>
+        </div>
+        <div class="canvasWrap">
+          <canvas id="chart" aria-label="Retention curves over lifetime"></canvas>
+        </div>
+      </div>
+
+      <div class="chartFooter">
+        <div id="footerLeft"></div>
+        <div id="footerRight"></div>
+      </div>
+    </section>
+
+    <!-- Panel -->
+    <section class="card panel">
+      <div class="tabbar">
+        <button id="tabPanel" class="active"></button>
+        <button id="tabMapping"></button>
+      </div>
+
+      <div class="tabcontent">
+        <div id="panePanel" class="tabpane active">
+          <h2 id="t_panel_h2"></h2>
+          <div class="callout" id="t_callout"></div>
+
+          <div id="narrative"></div>
+
+          <hr class="sep" />
+
+          <div class="controls">
+            <div class="control">
+              <label for="probe">
+                <span><b id="t_lbl_probe"></b> <span id="t_lbl_probe_sub"></span></span>
+                <span id="probeLabel">6.0</span>
+              </label>
+              <input id="probe" type="range" min="0" max="10" step="0.1" value="6" aria-label="Probe frequency" />
+              <div class="small" id="probeCaption"></div>
+            </div>
+
+            <div class="control">
+              <label for="hygiene">
+                <span><b id="t_lbl_hyg"></b> <span id="t_lbl_hyg_sub"></span></span>
+                <span id="hygieneLabel">7.0</span>
+              </label>
+              <input id="hygiene" type="range" min="0" max="10" step="0.1" value="7" aria-label="Coherence hygiene" />
+              <div class="small" id="hygieneCaption"></div>
+            </div>
+
+            <div class="control">
+              <label for="age">
+                <span><b id="t_lbl_age"></b></span>
+                <span id="ageLabel">25.0</span>
+              </label>
+              <input id="age" type="range" min="0" max="80" step="0.1" value="25.0" aria-label="Age in years" />
+              <div class="btnrow">
+                <button class="primary" id="playBtn"></button>
+                <button id="resetBtn"></button>
+                <button class="danger" id="doomBtn"></button>
+                <button class="good" id="cleanBtn"></button>
+              </div>
+            </div>
+
+            <div class="toggle">
+              <input id="shadeDebt" type="checkbox" checked />
+              <label for="shadeDebt" style="margin:0" id="t_toggle_debt"></label>
+            </div>
+            <div class="toggle">
+              <input id="showBand" type="checkbox" checked />
+              <label for="showBand" style="margin:0" id="t_toggle_band"></label>
+            </div>
+
+            <div class="small" id="t_help_hover"></div>
+          </div>
+        </div>
+
+        <div id="paneMapping" class="tabpane">
+          <h2 id="t_map_h2"></h2>
+          <ul class="bullets">
+            <li id="t_map_1"></li>
+            <li id="t_map_2"></li>
+            <li id="t_map_3"></li>
+            <li id="t_map_4"></li>
+            <li id="t_map_5"></li>
+            <li id="t_map_6"></li>
+            <li id="t_map_7"></li>
+          </ul>
+          <hr class="sep" />
+          <p class="small" id="t_map_note"></p>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   EDIT THESE PARAMS (top-of-file knobs)
+   ============================================================ */
+const SETTINGS = {
+  AGE_MAX: 80,
+  AGE_SNAP_DECIMALS: 1,       // 1 -> 0.1 years; 2 -> 0.01
+  PLAY_YEARS_PER_SEC: 1.0,    // playback speed (years/sec)
+  PLAY_MAX_DT_MS: 80,
+  PLOT_PAD_PX: 58,            // axes padding (auto-clamped)
+  BAND_R_LO: 0.35,            // "NPA/NPR zone" on red curve
+  BAND_R_HI: 0.75,
+  DISCOUNT_MIN_PCT: 2.0,      // illustrative "discount rate" at p=0
+  DISCOUNT_MAX_PCT: 12.0      // illustrative "discount rate" at p=10
+};
+/* ============================================================ */
+
+// ---- i18n
+const I18N = {
+  en: {
+    title: "NPR Calculator (NPV→NPR) • DREAM/S2",
+    h1: "NPV logic, but applied to the nervous system: Digital Marxism (DREAM/S2)",
+    kicker: `In classical economics <b>NPV</b> pulls future labor into the present via discounting.
+             Here is the cognitive analog: future <b>retention</b> is discounted and captured as present <b>engagement</b>.
+             This is <b>temporal arbitrage</b>: coherence now → accelerated decay later.`,
+    badge_extraction: "Extraction (capital)",
+    badge_coherence: "Coherence (subject)",
+    badge_debt: "Coherence debt",
+    badge_age: "Age marker",
+    legend_extraction: "Extraction (capital)",
+    legend_coherence: "Coherence (subject)",
+    legend_debt: "Debt",
+    legend_age: "Age",
+    legend_band: "NPA/NPR zone",
+    tab_panel: "Controls",
+    tab_mapping: "NPV → NPR",
+    panel_h2: "Working theory (forecast + warning)",
+    callout: `<b>NPV parallel:</b> as NPV fixes future labor value “today”, digital systems fix future retention value “today” as engagement.
+              Under S2 this isn't “attention consumption” but <b>retention discounting</b>: the “rate” is <b>probe frequency</b>,
+              and the unpaid liability appears decades later.`,
+    lbl_probe: "Probe frequency",
+    lbl_probe_sub: "(feed intensity)",
+    lbl_hyg: "Coherence hygiene",
+    lbl_hyg_sub: "(consolidation budget)",
+    lbl_age: "Age",
+    btn_play: "Play",
+    btn_pause: "Pause",
+    btn_reset: "Reset",
+    btn_doom: "Doomscroll",
+    btn_clean: "Coherence first",
+    toggle_debt: "Show “coherence debt”",
+    toggle_band: "Show “NPA/NPR zone” (where present value is extracted)",
+    help_hover: "Hover the chart for numbers (yellow marker tooltip included).",
+    map_h2: "Exploitation symmetry: labor ↔ retention",
+    map_1: "<b>Classical exploitation:</b> future labor is discounted and captured as present value (NPV).",
+    map_2: "<b>Digital exploitation:</b> future retention is discounted and captured as present engagement (NPR/NPA).",
+    map_3: "<b>Mechanism:</b> temporal arbitrage. Gain today → coherence decay tomorrow.",
+    map_4: "<b>“Rate”:</b> probe frequency (feed loops/notifications) acts as discount rate.",
+    map_5: "<b>Invisible liability:</b> decades later shows up as burnout, cognitive fragility, early “flattening” of the life narrative.",
+    map_6: "<b>Why the system prefers youth:</b> larger retention reserves → higher present value with less immediate damage. When the bill comes due, the subject is no longer the target demo.",
+    map_7: "<b>Policy:</b> attention regulation isn’t “paternalism”; it prevents uncompensated temporal expropriation (analog of labor-hour limits).",
+    map_note: "DREAM/S2 adds missing “physics”: not ideology, but coherence conservation. This is a mechanism/risk model — not medical diagnosis.",
+    axis_x: "Age (years)",
+    axis_y: "Retention (norm.)",
+    hover_none: "Hover: —",
+    hover_fmt: (a, rb, rg) => `Hover: Age ${a.toFixed(1)} • R(extr.)=${rb.toFixed(3)} • R(coh.)=${rg.toFixed(3)}`,
+    cursor_fmt: (a, r) => `Age ${a.toFixed(1)} • R(extr.)=${r.toFixed(3)}`,
+    probe_caption_low: "Low probe: low “discount rate”, slower liability build-up.",
+    probe_caption_mid: "Mixed regime: present value rises now; costs are deferred.",
+    probe_caption_high: "High probe: maximum NPA now; maximum deferred coherence liability.",
+    hyg_caption_low: "Weak hygiene: consolidation windows get displaced; debt fixes faster.",
+    hyg_caption_mid: "Moderate hygiene: consolidation exists, but can be crowded out.",
+    hyg_caption_high: "Strong hygiene: consolidation shifts the bill into the future.",
+    narrative_regime_high: "HF extraction dominates: short horizon wins, long horizon pays.",
+    narrative_regime_mid: "Transition regime: profits are visible; costs are still off-screen.",
+    narrative_regime_low: "Low extraction: retention is not aggressively discounted.",
+    narrative_lineNPV: (disc) => `NPV analogy: discount rate ≈ <b>${disc.toFixed(1)}%</b> (illustrative), increasing with probe frequency.`,
+    narrative_hyg_strong: "Strong hygiene: you rebuild long-baseline coherence via consolidation.",
+    narrative_hyg_mid: "Moderate hygiene: consolidation exists, but it's fragile.",
+    narrative_hyg_low: "Weak hygiene: consolidation is displaced — deferred costs lock in faster.",
+    narrative_drive: "Disk metaphor: HF loops create <b>write amplification</b> — more micro-writes, fewer durable writes. That's temporal arbitrage.",
+    age_dev: "<b>Development window:</b> high retention reserves are most attractive to discounting and capture.",
+    age_peak: "<b>Peak harvest:</b> maximum learnability/readability → maximum present value for the platform.",
+    age_bill: "<b>Bill phase:</b> accumulated liability starts appearing as earlier narrative flattening.",
+    age_thin: "<b>Thin buffers:</b> lower probe frequency, increase consolidation. Risk model, not diagnosis.",
+    band_yes: (a1,a2) => `NPA/NPR zone under current settings: ~${a1.toFixed(1)}–${a2.toFixed(1)} years.`,
+    band_no: "NPA/NPR zone: not pronounced under these settings (outside threshold band).",
+    nums: (ex, hyP, debt, halfAge) => `Now: extraction λq=${ex.lambdaQ.toFixed(1)}y, D=${ex.D.toFixed(2)} • hygiene λq=${hyP.lambdaQ.toFixed(1)}y • debt≈${debt.toFixed(1)} • half-life≈${halfAge === null ? ">max" : halfAge.toFixed(1)}.`,
+    footer_alarm_young: "Warning: early retention discounting bends the whole trajectory.",
+    footer_alarm_prime: "Warning: this is the peak NPA/NPR window: present value is extracted here.",
+    footer_alarm_mid: "Warning: liability shows up: earlier narrative flattening becomes noticeable.",
+    footer_alarm_old: "Warning: buffers thinner: lower probe frequency, increase consolidation.",
+    keys_hint: "Space = play/pause • R = reset",
+    switch_to_ru: "🇷🇺 RU",
+    switch_to_en: "🇬🇧 EN"
+  },
+  ru: {
+    title: "Калькулятор NPR (NPV→NPR) • DREAM/S2",
+    h1: "NPV-логика, но на нервной системе: цифровой марксизм (DREAM/S2)",
+    kicker: `В классической экономике <b>NPV</b> «подтягивает» будущий труд в настоящее через дисконтирование.
+             Здесь — когнитивный аналог: будущая <b>ретенция</b> дисконтируется и захватывается как текущая <b>вовлечённость</b>.
+             Это <b>временной арбитраж</b>: когерентность сейчас → ускоренный распад потом.`,
+    badge_extraction: "Извлечение (капитал)",
+    badge_coherence: "Когерентность (субъект)",
+    badge_debt: "Долг когерентности",
+    badge_age: "Маркер возраста",
+    legend_extraction: "Извлечение (капитал)",
+    legend_coherence: "Когерентность (субъект)",
+    legend_debt: "Долг",
+    legend_age: "Возраст",
+    legend_band: "Зона NPA/NPR",
+    tab_panel: "Панель",
+    tab_mapping: "NPV → NPR",
+    panel_h2: "Рабочая теория (прогноз + тревога)",
+    callout: `<b>Параллель с NPV:</b> как NPV фиксирует будущую стоимость труда «сегодня», так цифровые системы фиксируют будущую стоимость ретенции «сегодня» в виде вовлечённости.
+              В рамках S2 это не «потребление внимания», а <b>дисконтирование ретенции</b>: «ставка» — <b>частота зондирования</b>, а неоплаченный пассив проявляется спустя десятилетия.`,
+    lbl_probe: "Частота зондирования",
+    lbl_probe_sub: "(интенсивность ленты)",
+    lbl_hyg: "Гигиена когерентности",
+    lbl_hyg_sub: "(бюджет консолидации)",
+    lbl_age: "Возраст",
+    btn_play: "Пуск",
+    btn_pause: "Пауза",
+    btn_reset: "Сброс",
+    btn_doom: "Думскролл",
+    btn_clean: "Когерентность прежде всего",
+    toggle_debt: "Показывать «долг когерентности»",
+    toggle_band: "Показывать «зону NPA/NPR» (где добывается приведённая стоимость)",
+    help_hover: "Наведите на график для чисел (и подсказки у жёлтого маркера).",
+    map_h2: "Симметрия эксплуатации: труд ↔ ретенция",
+    map_1: "<b>Классическая эксплуатация:</b> будущий труд дисконтируется и захватывается как текущая стоимость (NPV).",
+    map_2: "<b>Цифровая эксплуатация:</b> будущая ретенция дисконтируется и захватывается как текущая вовлечённость (NPR/NPA).",
+    map_3: "<b>Механизм:</b> временной арбитраж. Выигрыш сегодня → распад когерентности завтра.",
+    map_4: "<b>«Ставка»:</b> частота зондирования (лента/уведомления) действует как ставка дисконтирования.",
+    map_5: "<b>Невидимый пассив:</b> спустя десятилетия проявляется как выгорание, когнитивная хрупкость, раннее «сплющивание» жизненного нарратива.",
+    map_6: "<b>Почему система предпочитает молодёжь:</b> больше запасов ретенции → выше «приведённая стоимость» при меньшем немедленном ущербе. Когда счёт приходит, субъект уже не ЦА.",
+    map_7: "<b>Политика:</b> регулирование внимания — не «патернализм», а предотвращение неоплаченной временной экспроприации (аналог ограничения рабочего времени).",
+    map_note: "DREAM/S2 добавляет недостающую «физику»: это не идеология, а сохранение когерентности. Модель механизма/риска — не медицинский диагноз.",
+    axis_x: "Возраст (лет)",
+    axis_y: "Ретенция (норм.)",
+    hover_none: "Наведение: —",
+    hover_fmt: (a, rb, rg) => `Наведение: Возраст ${a.toFixed(1)} • R(извл.)=${rb.toFixed(3)} • R(когер.)=${rg.toFixed(3)}`,
+    cursor_fmt: (a, r) => `Возраст ${a.toFixed(1)} • R(извл.)=${r.toFixed(3)}`,
+    probe_caption_low: "Низкая частота: низкая «ставка дисконтирования», долг растёт медленно.",
+    probe_caption_mid: "Смешанный режим: «приведённая стоимость» растёт сегодня, издержки отложены.",
+    probe_caption_high: "Высокая частота: максимум NPA сейчас; максимум отложенного долга когерентности.",
+    hyg_caption_low: "Гигиена слабая: окна консолидации вытесняются — долг фиксируется быстрее.",
+    hyg_caption_mid: "Гигиена умеренная: консолидация есть, но её легко вытеснить.",
+    hyg_caption_high: "Гигиена сильная: консолидация сдвигает «счёт» в будущее.",
+    narrative_regime_high: "ВЧ-извлечение доминирует: короткий горизонт выигрывает, длинный платит.",
+    narrative_regime_mid: "Переходный режим: прибыль уже видна, издержки ещё «за кадром».",
+    narrative_regime_low: "Низкое извлечение: ретенция не дисконтируется агрессивно.",
+    narrative_lineNPV: (disc) => `NPV-аналогия: ставка дисконтирования ≈ <b>${disc.toFixed(1)}%</b> (условно) и растёт с частотой зондирования.`,
+    narrative_hyg_strong: "Гигиена сильная: вы восстанавливаете длинную когерентность через консолидацию.",
+    narrative_hyg_mid: "Гигиена умеренная: консолидация есть, но она хрупкая.",
+    narrative_hyg_low: "Гигиена слабая: консолидация вытесняется — отложенные издержки закрепляются быстрее.",
+    narrative_drive: "Метафора накопителя: ВЧ-петли создают <b>усиление записи</b> — много микрозаписей, мало долговечных записей. Это и есть временной арбитраж.",
+    age_dev: "<b>Окно развития:</b> высокий запас ретенции делает дисконтирование и захват особенно выгодными.",
+    age_peak: "<b>Пиковая добыча:</b> максимальная обучаемость/читаемость → максимум приведённой стоимости для платформы.",
+    age_bill: "<b>Фаза счёта:</b> накопленный пассив начинает проявляться как более раннее «сплющивание» нарратива.",
+    age_thin: "<b>Тонкие буферы:</b> снижайте частоту зондирования, увеличивайте консолидацию. Модель риска, не диагноз.",
+    band_yes: (a1,a2) => `Зона NPA/NPR при текущих настройках: ~${a1.toFixed(1)}–${a2.toFixed(1)} лет.`,
+    band_no: "Зона NPA/NPR: при этих настройках не выражена (вне порогового диапазона).",
+    nums: (ex, hyP, debt, halfAge) => `Сейчас: извлечение λq=${ex.lambdaQ.toFixed(1)} лет, D=${ex.D.toFixed(2)} • гигиена λq=${hyP.lambdaQ.toFixed(1)} лет • долг≈${debt.toFixed(1)} • 1/2≈${halfAge === null ? ">макс" : halfAge.toFixed(1)}.`,
+    footer_alarm_young: "Тревога: раннее дисконтирование ретенции меняет всю траекторию.",
+    footer_alarm_prime: "Тревога: это окно максимума NPA/NPR — «стоимость» добывается здесь.",
+    footer_alarm_mid: "Тревога: пассив проявляется — раньше «сплющивается» нарратив.",
+    footer_alarm_old: "Тревога: буферы тоньше — снижайте частоту, наращивайте консолидацию.",
+    keys_hint: "Пробел = пуск/пауза • R = сброс",
+    switch_to_ru: "🇷🇺 RU",
+    switch_to_en: "🇬🇧 EN"
+  }
+};
+
+let LANG = localStorage.getItem("lang") || "ru";
+function t(){ return I18N[LANG]; }
+
+// one flag visible at a time: button shows the *target* language
+
+function updateLangButton(){
+  const btn = document.getElementById("langBtn");
+  const icon = document.getElementById("flagIcon");
+  const label = document.getElementById("flagLabel");
+  // Button shows the TARGET language
+  const target = (LANG === "ru") ? "en" : "ru";
+  if(icon){
+    icon.classList.remove("en","ru");
+    icon.classList.add(target);
+  }
+  if(label){
+    label.textContent = (target === "en") ? "EN" : "RU";
+  }
+  btn.title = (target === "en") ? "Switch to English" : "Переключить на русский";
+}
+
+
+function applyLang(){
+  document.documentElement.lang = LANG;
+  document.title = t().title;
+
+  const setHTML = (id, html) => { const el = document.getElementById(id); if(el) el.innerHTML = html; };
+  const setText = (id, text) => { const el = document.getElementById(id); if(el) el.textContent = text; };
+
+  setText("t_h1", t().h1);
+  setHTML("t_kicker", t().kicker);
+
+  setText("t_badge_extraction", t().badge_extraction);
+  setText("t_badge_coherence", t().badge_coherence);
+  setText("t_badge_debt", t().badge_debt);
+  setText("t_badge_age", t().badge_age);
+
+  setText("t_legend_extraction", t().legend_extraction);
+  setText("t_legend_coherence", t().legend_coherence);
+  setText("t_legend_debt", t().legend_debt);
+  setText("t_legend_age", t().legend_age);
+  setText("t_legend_band", t().legend_band);
+
+  setText("tabPanel", t().tab_panel);
+  setText("tabMapping", t().tab_mapping);
+
+  setText("t_panel_h2", t().panel_h2);
+  setHTML("t_callout", t().callout);
+
+  setText("t_lbl_probe", t().lbl_probe);
+  setText("t_lbl_probe_sub", t().lbl_probe_sub);
+  setText("t_lbl_hyg", t().lbl_hyg);
+  setText("t_lbl_hyg_sub", t().lbl_hyg_sub);
+  setText("t_lbl_age", t().lbl_age);
+
+  // Buttons: play depends on state; others static
+  const playBtn = document.getElementById("playBtn");
+  playBtn.textContent = playing ? t().btn_pause : t().btn_play;
+  setText("resetBtn", t().btn_reset);
+  setText("doomBtn", t().btn_doom);
+  setText("cleanBtn", t().btn_clean);
+
+  setText("t_toggle_debt", t().toggle_debt);
+  setText("t_toggle_band", t().toggle_band);
+  setText("t_help_hover", t().help_hover);
+
+  setText("t_map_h2", t().map_h2);
+  setHTML("t_map_1", t().map_1);
+  setHTML("t_map_2", t().map_2);
+  setHTML("t_map_3", t().map_3);
+  setHTML("t_map_4", t().map_4);
+  setHTML("t_map_5", t().map_5);
+  setHTML("t_map_6", t().map_6);
+  setHTML("t_map_7", t().map_7);
+  setText("t_map_note", t().map_note);
+
+  updateLangButton();
+}
+
+// ---- App core
+const canvas = document.getElementById("chart");
+const ctx = canvas.getContext("2d");
+
+const probe = document.getElementById("probe");
+const hygiene = document.getElementById("hygiene");
+const age = document.getElementById("age");
+
+const probeLabel = document.getElementById("probeLabel");
+const hygieneLabel = document.getElementById("hygieneLabel");
+const ageLabel = document.getElementById("ageLabel");
+
+const probeCaption = document.getElementById("probeCaption");
+const hygieneCaption = document.getElementById("hygieneCaption");
+
+const shadeDebt = document.getElementById("shadeDebt");
+const showBand = document.getElementById("showBand");
+
+const playBtn = document.getElementById("playBtn");
+const resetBtn = document.getElementById("resetBtn");
+const doomBtn = document.getElementById("doomBtn");
+const cleanBtn = document.getElementById("cleanBtn");
+
+const footerLeft = document.getElementById("footerLeft");
+const footerRight = document.getElementById("footerRight");
+
+const tabPanel = document.getElementById("tabPanel");
+const tabMapping = document.getElementById("tabMapping");
+const panePanel = document.getElementById("panePanel");
+const paneMapping = document.getElementById("paneMapping");
+
+const narrativeEl = document.getElementById("narrative");
+
+const ageMax = SETTINGS.AGE_MAX;
+let pad = SETTINGS.PLOT_PAD_PX;
+
+let playing = false;
+let lastTS = 0;
+let playAge = null;
+
+function setTab(which){
+  [tabPanel, tabMapping].forEach(b => b.classList.remove("active"));
+  [panePanel, paneMapping].forEach(p => p.classList.remove("active"));
+  if(which === "p"){
+    tabPanel.classList.add("active"); panePanel.classList.add("active");
+  }else{
+    tabMapping.classList.add("active"); paneMapping.classList.add("active");
+  }
+}
+tabPanel.addEventListener("click", ()=>setTab("p"));
+tabMapping.addEventListener("click", ()=>setTab("m"));
+
+// Language toggle
+document.getElementById("langBtn").addEventListener("click", ()=>{
+  LANG = (LANG === "ru") ? "en" : "ru";
+  localStorage.setItem("lang", LANG);
+  applyLang();
+  draw(); // refresh dynamic strings
+});
+
+// Resize canvas to fit wrapper, DPR-aware
+function resizeCanvas(){
+  const wrap = canvas.parentElement;
+  const cssW = wrap.clientWidth;
+  const cssH = wrap.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.round(cssW * dpr));
+  canvas.height = Math.max(1, Math.round(cssH * dpr));
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener("resize", ()=>{ resizeCanvas(); draw(); });
+
+// --- DREAM/S2 toy parameterization
+function paramsExtraction(p){
+  const lambdaQ = 55 - p * 2.0;
+  const D = 1.6 + p * 0.05;
+  return {lambdaQ, D};
+}
+function paramsHygiene(h){
+  const lambdaQ = 60 + h * 2.5;
+  const D = 1.35;
+  return {lambdaQ, D};
+}
+function retention(aYears, lambdaQ, D){
+  const a = Math.max(0, aYears);
+  const l = Math.max(1e-6, lambdaQ);
+  const d = Math.max(0.2, D);
+  return Math.exp(-Math.pow(a / l, d));
+}
+
+// --- Plot helpers (CSS pixels)
+function plotW(){ return canvas.getBoundingClientRect().width; }
+function plotH(){ return canvas.getBoundingClientRect().height; }
+function X(a, w){ return pad + (a / ageMax) * (w - 2*pad); }
+function Y(r, h){ return h - pad - r * (h - 2*pad); }
+
+function roundRect(x, y, w, h, r, fill, stroke){
+  const rr = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+  if(fill) ctx.fill();
+  if(stroke) ctx.stroke();
+}
+
+function drawAxes(w, h){
+  ctx.strokeStyle = "#3a4256";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad, pad);
+  ctx.lineTo(pad, h - pad);
+  ctx.lineTo(w - pad, h - pad);
+  ctx.stroke();
+
+  ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+  ctx.fillStyle = "#aab0c0";
+
+  const xTicks = [0,10,20,30,40,50,60,70,80].filter(tick => tick <= ageMax);
+  for(const tick of xTicks){
+    const px = X(tick, w);
+    ctx.strokeStyle = "rgba(58,66,86,.25)";
+    ctx.beginPath(); ctx.moveTo(px, pad); ctx.lineTo(px, h - pad); ctx.stroke();
+    ctx.strokeStyle = "#3a4256";
+    ctx.beginPath(); ctx.moveTo(px, h - pad); ctx.lineTo(px, h - pad + 6); ctx.stroke();
+    ctx.textAlign="center"; ctx.textBaseline="top";
+    ctx.fillText(String(tick), px, h - pad + 8);
+  }
+
+  const yTicks = [0,0.2,0.4,0.6,0.8,1.0];
+  for(const tick of yTicks){
+    const py = Y(tick, h);
+    ctx.strokeStyle = "rgba(58,66,86,.25)";
+    ctx.beginPath(); ctx.moveTo(pad, py); ctx.lineTo(w - pad, py); ctx.stroke();
+    ctx.strokeStyle = "#3a4256";
+    ctx.beginPath(); ctx.moveTo(pad - 6, py); ctx.lineTo(pad, py); ctx.stroke();
+    ctx.textAlign="right"; ctx.textBaseline="middle";
+    ctx.fillText(tick.toFixed(1), pad - 10, py);
+  }
+
+  ctx.fillStyle = "#e6e8ee";
+  ctx.textAlign="center"; ctx.textBaseline="bottom";
+  ctx.fillText(t().axis_x, pad + (w - 2*pad)/2, h - 10);
+
+  ctx.save();
+  ctx.translate(18, pad + (h - 2*pad)/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.textBaseline="top";
+  ctx.fillText(t().axis_y, 0, 0);
+  ctx.restore();
+}
+
+function drawCurve(w, h, color, fn){
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for(let a=0; a<=ageMax; a+=0.25){
+    const r = fn(a);
+    const px = X(a, w);
+    const py = Y(r, h);
+    if(a===0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+}
+
+function fillDebt(w, h, fnGood, fnBad){
+  ctx.save();
+  ctx.fillStyle = "rgba(93,169,255,.10)";
+  ctx.beginPath();
+  for(let a=0; a<=ageMax; a+=0.5){
+    const px = X(a, w);
+    const py = Y(fnGood(a), h);
+    if(a===0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  for(let a=ageMax; a>=0; a-=0.5){
+    const px = X(a, w);
+    const py = Y(fnBad(a), h);
+    ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function findBand(fnBad){
+  const lo = SETTINGS.BAND_R_LO, hi = SETTINGS.BAND_R_HI;
+  let start = null, end = null;
+  for(let a=0; a<=ageMax; a+=0.25){
+    const r = fnBad(a);
+    if(r <= hi && r >= lo){
+      if(start === null) start = a;
+      end = a;
+    }
+  }
+  if(start === null) return null;
+  return {start, end};
+}
+function drawBand(w, h, band){
+  if(!band) return;
+  ctx.save();
+  ctx.fillStyle = "rgba(255,209,102,.10)";
+  const x1 = X(band.start, w);
+  const x2 = X(band.end, w);
+  ctx.fillRect(x1, pad, Math.max(1, x2-x1), (h - 2*pad));
+  ctx.restore();
+}
+
+function drawLifeCursor(w, h, aLife, fnBad){
+  const r = fnBad(aLife);
+  const px = X(aLife, w);
+  const py = Y(r, h);
+
+  ctx.strokeStyle = "rgba(255,209,102,.55)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(px, pad); ctx.lineTo(px, h - pad); ctx.stroke();
+
+  ctx.fillStyle = "#ffd166";
+  ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI*2); ctx.fill();
+
+  const label = t().cursor_fmt(aLife, r);
+  ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+  const tw = ctx.measureText(label).width;
+  const bx = Math.min(w - pad - tw - 18, px + 10);
+  const by = Math.max(pad + 22, py - 10);
+  ctx.fillStyle = "rgba(12,16,25,.9)";
+  ctx.strokeStyle = "rgba(42,49,66,.9)";
+  ctx.lineWidth = 1;
+  roundRect(bx, by - 18, tw + 12, 20, 8, true, true);
+  ctx.fillStyle = "#e6e8ee";
+  ctx.textAlign="left"; ctx.textBaseline="bottom";
+  ctx.fillText(label, bx + 6, by - 4);
+}
+
+// --- Hover
+let hover = {active:false, age:0};
+function onMove(ev){
+  const rect = canvas.getBoundingClientRect();
+  const mx = ev.clientX - rect.left;
+  const w = rect.width;
+  const a = ((mx - pad) / (w - 2*pad)) * ageMax;
+  if(a >= 0 && a <= ageMax){
+    hover.active = true;
+    hover.age = a;
+  }else{
+    hover.active = false;
+  }
+}
+function onLeave(){ hover.active = false; }
+canvas.addEventListener("mousemove", onMove);
+canvas.addEventListener("mouseleave", onLeave);
+canvas.addEventListener("touchstart", (e)=>{ if(e.touches?.[0]) onMove(e.touches[0]); }, {passive:true});
+canvas.addEventListener("touchmove", (e)=>{ if(e.touches?.[0]) onMove(e.touches[0]); }, {passive:true});
+canvas.addEventListener("touchend", ()=>{ hover.active=false; }, {passive:true});
+
+// --- Metrics
+function computeDebt(fnGood, fnBad){
+  let sum = 0;
+  const step = 0.5;
+  for(let a=0; a<ageMax; a+=step){
+    const g1 = fnGood(a), g2 = fnGood(a+step);
+    const b1 = fnBad(a),  b2 = fnBad(a+step);
+    sum += ((g1-b1) + (g2-b2)) * 0.5 * step;
+  }
+  return Math.max(0, sum);
+}
+function halfRetentionAge(fnBad){
+  for(let a=0; a<=ageMax; a+=0.25){
+    if(fnBad(a) <= 0.5) return a;
+  }
+  return null;
+}
+function discountRatePct(p){
+  const tt = Math.max(0, Math.min(1, p/10));
+  return SETTINGS.DISCOUNT_MIN_PCT + tt*(SETTINGS.DISCOUNT_MAX_PCT - SETTINGS.DISCOUNT_MIN_PCT);
+}
+
+function updateCaptions(p, h){
+  if(p < 3) probeCaption.textContent = t().probe_caption_low;
+  else if(p < 6) probeCaption.textContent = t().probe_caption_mid;
+  else probeCaption.textContent = t().probe_caption_high;
+
+  if(h < 3) hygieneCaption.textContent = t().hyg_caption_low;
+  else if(h < 6) hygieneCaption.textContent = t().hyg_caption_mid;
+  else hygieneCaption.textContent = t().hyg_caption_high;
+}
+
+function narrativeHTML(a, p, h, ex, hyP, debt, halfAge, band, disc){
+  const young = a < 18;
+  const prime = a >= 18 && a < 35;
+  const mid = a >= 35 && a < 55;
+
+  const extractionRegime = (p < 3) ? "low" : (p < 6) ? "mixed" : "high";
+  const hygieneRegime = (h < 3) ? "thin" : (h < 6) ? "moderate" : "strong";
+
+  const lineRegime =
+    extractionRegime === "high" ? t().narrative_regime_high
+    : extractionRegime === "mixed" ? t().narrative_regime_mid
+    : t().narrative_regime_low;
+
+  const lineNPV = t().narrative_lineNPV(disc);
+
+  const lineHyg =
+    hygieneRegime === "strong" ? t().narrative_hyg_strong
+    : hygieneRegime === "moderate" ? t().narrative_hyg_mid
+    : t().narrative_hyg_low;
+
+  const lineDrive = t().narrative_drive;
+
+  let lineAge;
+  if(young) lineAge = t().age_dev;
+  else if(prime) lineAge = t().age_peak;
+  else if(mid) lineAge = t().age_bill;
+  else lineAge = t().age_thin;
+
+  const bandLine = band ? t().band_yes(band.start, band.end) : t().band_no;
+  const lineNums = t().nums(ex, hyP, debt, halfAge);
+
+  return `
+    <ul class="bullets">
+      <li>${lineRegime}</li>
+      <li class="small">${lineNPV}</li>
+      <li>${lineHyg}</li>
+      <li>${lineDrive}</li>
+      <li>${lineAge}</li>
+      <li class="small">${bandLine}</li>
+      <li class="small">${lineNums}</li>
+    </ul>
+  `;
+}
+
+function snap(val, decimals){
+  const s = Math.pow(10, decimals);
+  return Math.round(val * s) / s;
+}
+
+function draw(){
+  const w = plotW();
+  const h = plotH();
+  pad = Math.min(SETTINGS.PLOT_PAD_PX, Math.max(44, Math.floor(Math.min(w,h) * 0.14)));
+
+  const p = parseFloat(probe.value);
+  const hy = parseFloat(hygiene.value);
+  const aLife = parseFloat(age.value);
+
+  probeLabel.textContent = p.toFixed(1);
+  hygieneLabel.textContent = hy.toFixed(1);
+  ageLabel.textContent = aLife.toFixed(SETTINGS.AGE_SNAP_DECIMALS);
+
+  updateCaptions(p, hy);
+
+  const ex = paramsExtraction(p);
+  const hyP = paramsHygiene(hy);
+
+  const fnBad = (a) => retention(a, ex.lambdaQ, ex.D);
+  const fnGood = (a) => retention(a, hyP.lambdaQ, hyP.D);
+
+  const debt = computeDebt(fnGood, fnBad);
+  const halfAge = halfRetentionAge(fnBad);
+  const band = findBand(fnBad);
+  const disc = discountRatePct(p);
+
+  ctx.clearRect(0,0,w,h);
+  drawAxes(w,h);
+
+  if(showBand.checked) drawBand(w,h, band);
+  if(shadeDebt.checked) fillDebt(w,h, fnGood, fnBad);
+
+  drawCurve(w,h, "#ff6b6b", fnBad);
+  drawCurve(w,h, "#7bd389", fnGood);
+
+  drawLifeCursor(w,h, aLife, fnBad);
+
+  if(hover.active){
+    const aH = Math.max(0, Math.min(ageMax, hover.age));
+    const rB = fnBad(aH);
+    const rG = fnGood(aH);
+    const px = X(aH, w);
+
+    ctx.strokeStyle = "rgba(93,169,255,.55)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px, pad); ctx.lineTo(px, h - pad); ctx.stroke();
+
+    const label = t().hover_fmt(aH, rB, rG);
+    ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    const tw = ctx.measureText(label).width;
+    const bx = Math.min(w - pad - tw - 18, px + 10);
+    const by = pad + 10;
+    ctx.fillStyle = "rgba(12,16,25,.9)";
+    ctx.strokeStyle = "rgba(42,49,66,.9)";
+    ctx.lineWidth = 1;
+    roundRect(bx, by, tw + 12, 20, 8, true, true);
+    ctx.fillStyle = "#e6e8ee";
+    ctx.textAlign="left"; ctx.textBaseline="top";
+    ctx.fillText(label, bx + 6, by + 4);
+
+    footerLeft.textContent = label;
+  }else{
+    footerLeft.textContent = t().hover_none;
+  }
+
+  // Footer right: alarm line + key hint (compact)
+  let alarm;
+  if(aLife < 18) alarm = t().footer_alarm_young;
+  else if(aLife < 35) alarm = t().footer_alarm_prime;
+  else if(aLife < 55) alarm = t().footer_alarm_mid;
+  else alarm = t().footer_alarm_old;
+
+  footerRight.textContent = alarm + "  •  " + t().keys_hint;
+
+  narrativeEl.innerHTML = narrativeHTML(aLife, p, hy, ex, hyP, debt, halfAge, band, disc);
+}
+
+function tick(ts){
+  if(!lastTS) lastTS = ts;
+  const dt = Math.min(SETTINGS.PLAY_MAX_DT_MS, ts - lastTS);
+  lastTS = ts;
+
+  if(playing){
+    if(playAge === null) playAge = parseFloat(age.value);
+    playAge += (dt/1000) * SETTINGS.PLAY_YEARS_PER_SEC;
+
+    if(playAge > ageMax){
+      playAge = ageMax;
+      playing = false;
+      playBtn.textContent = t().btn_play;
+      updateLangButton();
+    }
+
+    const snapped = snap(playAge, SETTINGS.AGE_SNAP_DECIMALS);
+    age.value = snapped.toFixed(SETTINGS.AGE_SNAP_DECIMALS);
+  }
+
+  draw();
+  requestAnimationFrame(tick);
+}
+
+// Presets
+function setPreset(kind){
+  if(kind === "doom"){
+    probe.value = "9.0";
+    hygiene.value = "2.5";
+    age.value = "18.0";
+  }
+  if(kind === "clean"){
+    probe.value = "2.0";
+    hygiene.value = "8.5";
+    age.value = "18.0";
+  }
+  playAge = null;
+}
+
+playBtn.addEventListener("click", ()=>{
+  playing = !playing;
+  if(playing) playAge = parseFloat(age.value);
+  playBtn.textContent = playing ? t().btn_pause : t().btn_play;
+});
+resetBtn.addEventListener("click", ()=>{
+  playing = false;
+  playBtn.textContent = t().btn_play;
+  age.value = "25.0";
+  playAge = null;
+});
+doomBtn.addEventListener("click", ()=>setPreset("doom"));
+cleanBtn.addEventListener("click", ()=>setPreset("clean"));
+age.addEventListener("input", ()=>{ playAge = parseFloat(age.value); });
+
+// Keyboard shortcuts (do NOT translate key codes)
+window.addEventListener("keydown", (e)=>{
+  if(e.code === "Space"){
+    e.preventDefault();
+    playing = !playing;
+    if(playing) playAge = parseFloat(age.value);
+    playBtn.textContent = playing ? t().btn_pause : t().btn_play;
+  }
+  if(e.key.toLowerCase() === "r"){
+    playing = false;
+    playBtn.textContent = t().btn_play;
+    probe.value = "6";
+    hygiene.value = "7";
+    age.value = "25.0";
+    shadeDebt.checked = true;
+    showBand.checked = true;
+    playAge = null;
+    setTab("p");
+  }
+});
+
+// init
+requestAnimationFrame(()=>{
+  applyLang();
+  resizeCanvas();
+  requestAnimationFrame(()=>requestAnimationFrame(tick));
+});
+</script>
+</body>
+</html>
