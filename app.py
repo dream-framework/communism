@@ -45,6 +45,10 @@ def altruists(lang): return render_template(f'{lang}/altruists.html', active='al
 @with_lang
 def faq(lang): return render_template(f'{lang}/faq.html', active='faq', lang=lang)
 
+@pages.route('/<lang>/npa')
+@with_lang
+def npa(lang): return render_template(f'{lang}/npa.html', active='npa', lang=lang)
+
 @pages.route('/<lang>/appendix')
 @with_lang
 def appendix(lang): return render_template(f'{lang}/appendix.html', active='appendix', lang=lang)
