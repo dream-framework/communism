@@ -66,6 +66,26 @@
     .fs-target.fs-active .legendOverlay {
       z-index: 10;
     }
+    /* When the whole .main grid goes fullscreen, let it scroll and fill */
+    .fs-target.fs-active.main {
+      overflow: auto !important;
+      padding: 12px !important;
+      grid-template-columns: 1fr 380px !important;
+    }
+    .fs-target.fs-active.main .chart {
+      min-height: 500px;
+    }
+    .fs-target.fs-active.main .chartArea {
+      min-height: 350px;
+      height: auto !important;
+      flex: 1;
+    }
+    .fs-target.fs-active.main .panel {
+      max-height: none !important;
+    }
+    .fs-target.fs-active.main .tabcontent {
+      overflow: visible !important;
+    }
     /* Dark backdrop behind fullscreen element (optional — element covers it anyway) */
     .fs-backdrop {
       display: none;

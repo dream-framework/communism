@@ -129,8 +129,34 @@ header h1{
 /* Chart card */
 .chart{
   display:grid;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: 1fr auto auto;
   min-height:0;
+}
+
+/* Sliders directly under the chart */
+.chartControls{
+  padding:8px 12px;
+  border-top:1px solid var(--border);
+  display:grid;
+  gap:6px;
+}
+.control-row{
+  display:grid;
+  gap:2px;
+}
+.control-row label{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  font-size:11px;
+  color:var(--muted);
+}
+.control-row label b{color:var(--text);font-weight:800;font-size:12px;}
+.toggle-row{
+  display:flex;
+  gap:16px;
+  flex-wrap:wrap;
+  padding-top:2px;
 }
 .chartArea{
   position:relative;
@@ -577,9 +603,9 @@ button:active{ transform: translateY(0); }
     </div>
   </header>
 
-  <div class="main">
-    <!-- Chart -->
-    <section class="card chart" data-fullscreen>
+  <div class="main" data-fullscreen>
+    <!-- Chart + controls (left column) -->
+    <section class="card chart">
       <div class="chartArea">
         <div class="legendOverlay" aria-hidden="true">
           <span><span class="sw bad"></span><span id="t_legend_extraction"></span></span>
@@ -590,6 +616,41 @@ button:active{ transform: translateY(0); }
         </div>
         <div class="canvasWrap">
           <canvas id="chart" aria-label="Retention curves over lifetime"></canvas>
+        </div>
+      </div>
+
+      <!-- Sliders moved here, directly under the chart -->
+      <div class="chartControls">
+        <div class="control-row">
+          <label for="probe">
+            <span><b id="t_lbl_probe"></b> <span id="t_lbl_probe_sub"></span></span>
+            <span id="probeLabel">6.0</span>
+          </label>
+          <input id="probe" type="range" min="0" max="10" step="0.1" value="6" aria-label="Probe frequency" />
+        </div>
+        <div class="control-row">
+          <label for="hygiene">
+            <span><b id="t_lbl_hyg"></b> <span id="t_lbl_hyg_sub"></span></span>
+            <span id="hygieneLabel">7.0</span>
+          </label>
+          <input id="hygiene" type="range" min="0" max="10" step="0.1" value="7" aria-label="Coherence hygiene" />
+        </div>
+        <div class="control-row">
+          <label for="age">
+            <span><b id="t_lbl_age"></b></span>
+            <span id="ageLabel">25.0</span>
+          </label>
+          <input id="age" type="range" min="0" max="80" step="0.1" value="25.0" aria-label="Age in years" />
+        </div>
+        <div class="toggle-row">
+          <div class="toggle">
+            <input id="shadeDebt" type="checkbox" checked />
+            <label for="shadeDebt" style="margin:0" id="t_toggle_debt"></label>
+          </div>
+          <div class="toggle">
+            <input id="showBand" type="checkbox" checked />
+            <label for="showBand" style="margin:0" id="t_toggle_band"></label>
+          </div>
         </div>
       </div>
 
@@ -605,7 +666,7 @@ button:active{ transform: translateY(0); }
       </div>
     </section>
 
-    <!-- Panel -->
+    <!-- Narrative panel (right column) — compact, no scroll -->
     <section class="card panel">
       <div class="tabbar">
         <button id="tabPanel" class="active"></button>
@@ -614,51 +675,7 @@ button:active{ transform: translateY(0); }
 
       <div class="tabcontent">
         <div id="panePanel" class="tabpane active">
-          <h2 id="t_panel_h2"></h2>
-          <div class="callout" id="t_callout"></div>
-
           <div id="narrative"></div>
-
-          <hr class="sep" />
-
-          <div class="controls">
-            <div class="control">
-              <label for="probe">
-                <span><b id="t_lbl_probe"></b> <span id="t_lbl_probe_sub"></span></span>
-                <span id="probeLabel">6.0</span>
-              </label>
-              <input id="probe" type="range" min="0" max="10" step="0.1" value="6" aria-label="Probe frequency" />
-              <div class="small" id="probeCaption"></div>
-            </div>
-
-            <div class="control">
-              <label for="hygiene">
-                <span><b id="t_lbl_hyg"></b> <span id="t_lbl_hyg_sub"></span></span>
-                <span id="hygieneLabel">7.0</span>
-              </label>
-              <input id="hygiene" type="range" min="0" max="10" step="0.1" value="7" aria-label="Coherence hygiene" />
-              <div class="small" id="hygieneCaption"></div>
-            </div>
-
-            <div class="control">
-              <label for="age">
-                <span><b id="t_lbl_age"></b></span>
-                <span id="ageLabel">25.0</span>
-              </label>
-              <input id="age" type="range" min="0" max="80" step="0.1" value="25.0" aria-label="Age in years" />
-            </div>
-
-            <div class="toggle">
-              <input id="shadeDebt" type="checkbox" checked />
-              <label for="shadeDebt" style="margin:0" id="t_toggle_debt"></label>
-            </div>
-            <div class="toggle">
-              <input id="showBand" type="checkbox" checked />
-              <label for="showBand" style="margin:0" id="t_toggle_band"></label>
-            </div>
-
-            <div class="small" id="t_help_hover"></div>
-          </div>
         </div>
 
         <div id="paneMapping" class="tabpane">
@@ -902,6 +919,8 @@ function applyLang(){
 
   setText("t_panel_h2", t().panel_h2);
   setHTML("t_callout", t().callout);
+  // These elements may not exist in the compact layout
+  setText("t_help_hover", t().help_hover);
 
   setText("t_lbl_probe", t().lbl_probe);
   setText("t_lbl_probe_sub", t().lbl_probe_sub);
@@ -959,6 +978,8 @@ const ageLabel = document.getElementById("ageLabel");
 
 const probeCaption = document.getElementById("probeCaption");
 const hygieneCaption = document.getElementById("hygieneCaption");
+const footerLeft = document.getElementById("footerLeft");
+const footerRight = document.getElementById("footerRight");
 
 const shadeDebt = document.getElementById("shadeDebt");
 const showBand = document.getElementById("showBand");
@@ -967,9 +988,6 @@ const playBtn = document.getElementById("playBtn");
 const resetBtn = document.getElementById("resetBtn");
 const doomBtn = document.getElementById("doomBtn");
 const cleanBtn = document.getElementById("cleanBtn");
-
-const footerLeft = document.getElementById("footerLeft");
-const footerRight = document.getElementById("footerRight");
 
 const tabPanel = document.getElementById("tabPanel");
 const tabMapping = document.getElementById("tabMapping");
@@ -1338,76 +1356,55 @@ function discountRatePct(p){
 }
 
 function updateCaptions(p, h){
-  if(p < 3) probeCaption.textContent = t().probe_caption_low;
-  else if(p < 6) probeCaption.textContent = t().probe_caption_mid;
-  else probeCaption.textContent = t().probe_caption_high;
-
-  if(h < 3) hygieneCaption.textContent = t().hyg_caption_low;
-  else if(h < 6) hygieneCaption.textContent = t().hyg_caption_mid;
-  else hygieneCaption.textContent = t().hyg_caption_high;
+  if(probeCaption){
+    if(p < 3) probeCaption.textContent = t().probe_caption_low;
+    else if(p < 6) probeCaption.textContent = t().probe_caption_mid;
+    else probeCaption.textContent = t().probe_caption_high;
+  }
+  if(hygieneCaption){
+    if(h < 3) hygieneCaption.textContent = t().hyg_caption_low;
+    else if(h < 6) hygieneCaption.textContent = t().hyg_caption_mid;
+    else hygieneCaption.textContent = t().hyg_caption_high;
+  }
 }
 
 function narrativeHTML(a, p, h, ex, hyP, debt, halfAge, band, disc){
-  const young = a < 18;
-  const prime = a >= 18 && a < 35;
-  const mid = a >= 35 && a < 55;
+  const rNow = retention(a, ex.lambdaQ, ex.D);
+  const rGood = retention(a, hyP.lambdaQ, hyP.D);
 
   const extractionRegime = (p < 3) ? "low" : (p < 6) ? "mixed" : "high";
-  const hygieneRegime = (h < 3) ? "thin" : (h < 6) ? "moderate" : "strong";
-
-  const lineRegime =
-    extractionRegime === "high" ? t().narrative_regime_high
-    : extractionRegime === "mixed" ? t().narrative_regime_mid
-    : t().narrative_regime_low;
-
-  const lineNPV = t().narrative_lineNPV(disc);
-
-  const lineHyg =
-    hygieneRegime === "strong" ? t().narrative_hyg_strong
-    : hygieneRegime === "moderate" ? t().narrative_hyg_mid
-    : t().narrative_hyg_low;
-
-  const lineDrive = t().narrative_drive;
-
-  let lineAge;
-  if(young) lineAge = t().age_dev;
-  else if(prime) lineAge = t().age_peak;
-  else if(mid) lineAge = t().age_bill;
-  else lineAge = t().age_thin;
-
-  const bandLine = band ? t().band_yes(band.start, band.end) : t().band_no;
-  const lineNums = t().nums(ex, hyP, debt, halfAge);
-
-  // Live status badge — color-coded by extraction severity
   const sevColor = extractionRegime === "high" ? "#f0a0a0" : extractionRegime === "mixed" ? "#f0c878" : "#7dd3a8";
-  const sevText = extractionRegime === "high" ? (LANG === "ru" ? "ВЫСОКАЯ ЭКСТРАКЦИЯ" : "HIGH EXTRACTION")
-                : extractionRegime === "mixed" ? (LANG === "ru" ? "СМЕШАННЫЙ РЕЖИМ" : "MIXED REGIME")
-                : (LANG === "ru" ? "НИЗКАЯ ЭКСТРАКЦИЯ" : "LOW EXTRACTION");
+  const sevText = extractionRegime === "high" ? (LANG === "ru" ? "ВЫСОКАЯ" : "HIGH")
+                : extractionRegime === "mixed" ? (LANG === "ru" ? "СМЕШАННАЯ" : "MIXED")
+                : (LANG === "ru" ? "НИЗКАЯ" : "LOW");
 
-  // Dynamic headline that changes with the numbers
-  const debtPct = (debt / 10).toFixed(1);
-  const halfAgeStr = halfAge === null ? (LANG === "ru" ? ">80" : ">80") : halfAge.toFixed(1);
-  const headline = LANG === "ru"
-    ? `Возраст ${a.toFixed(1)} · R=${retention(a, ex.lambdaQ, ex.D).toFixed(3)} · долг=${debt.toFixed(1)} · полужизнь=${halfAgeStr}г`
-    : `Age ${a.toFixed(1)} · R=${retention(a, ex.lambdaQ, ex.D).toFixed(3)} · debt=${debt.toFixed(1)} · half-life=${halfAgeStr}y`;
+  // Age-phase label — changes as the probe slides
+  let phaseIcon, phaseLabel, phaseColor;
+  if(a < 18){ phaseIcon = "🌱"; phaseLabel = LANG === "ru" ? "Развитие" : "Development"; phaseColor = "#7dd3a8"; }
+  else if(a < 35){ phaseIcon = "⚡"; phaseLabel = LANG === "ru" ? "Пик сбора" : "Peak harvest"; phaseColor = "#f0c878"; }
+  else if(a < 55){ phaseIcon = "📋"; phaseLabel = LANG === "ru" ? "Счет" : "Bill phase"; phaseColor = "#f0a0a0"; }
+  else { phaseIcon = "🍂"; phaseLabel = LANG === "ru" ? "Истощение" : "Thin buffers"; phaseColor = "#94a3b8"; }
+
+  // Compact dynamic narrative — 3 lines, no scroll
+  const halfAgeStr = halfAge === null ? ">80" : halfAge.toFixed(1);
+  const debtStr = debt < 100 ? debt.toFixed(1) : Math.round(debt).toString();
 
   return `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sevColor};box-shadow:0 0 8px ${sevColor};animation:tc-blink 1.5s ease-in-out infinite;"></span>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+      <span style="width:8px;height:8px;border-radius:50%;background:${sevColor};box-shadow:0 0 8px ${sevColor};animation:tc-blink 1.5s ease-in-out infinite;flex-shrink:0;"></span>
       <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:${sevColor};">${sevText}</span>
+      <span style="font-size:10px;color:var(--muted2);margin-left:auto;">${phaseIcon} ${phaseLabel}</span>
     </div>
-    <div style="font-size:11px;color:#5da9ff;font-family:ui-monospace,Menlo,Consolas,monospace;margin-bottom:8px;padding:5px 8px;border-radius:6px;background:rgba(93,169,255,.06);border:1px solid rgba(93,169,255,.15);">
-      ${headline}
+    <div style="font-size:12px;color:#8ec5e8;font-family:ui-monospace,Menlo,Consolas,monospace;margin-bottom:6px;padding:5px 8px;border-radius:6px;background:rgba(142,197,232,.06);border:1px solid rgba(142,197,232,.15);">
+      <div>age ${a.toFixed(1)} · R<sub style="font-size:9px">extr</sub>=${rNow.toFixed(3)} · R<sub style="font-size:9px">coh</sub>=${rGood.toFixed(3)}</div>
+      <div style="color:${phaseColor};margin-top:2px;">debt=${debtStr} · ½-life=${halfAgeStr}${LANG==="ru"?"г":"y"} · r≈${disc.toFixed(1)}%</div>
     </div>
-    <ul class="bullets">
-      <li>${lineRegime}</li>
-      <li class="small">${lineNPV}</li>
-      <li>${lineHyg}</li>
-      <li>${lineDrive}</li>
-      <li>${lineAge}</li>
-      <li class="small">${bandLine}</li>
-      <li class="small">${lineNums}</li>
-    </ul>
+    <div style="font-size:11px;color:var(--muted);line-height:1.35;">
+      ${extractionRegime === "high" ? t().narrative_regime_high : extractionRegime === "mixed" ? t().narrative_regime_mid : t().narrative_regime_low}
+    </div>
+    <div style="font-size:11px;color:var(--muted2);line-height:1.35;margin-top:3px;">
+      ${t().narrative_lineNPV(disc)}
+    </div>
   `;
 }
 
