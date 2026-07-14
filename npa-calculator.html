@@ -1370,49 +1370,63 @@ function discountRatePct(p){
   return SETTINGS.DISCOUNT_MIN_PCT + tt*(SETTINGS.DISCOUNT_MAX_PCT - SETTINGS.DISCOUNT_MIN_PCT);
 }
 
-// ── Devastator estimates: translate D + debt into population-scale damage ──
-// Calibrated against the NPA manifesto's projections (27B → 80B → 160B life-years)
-function devastatorEstimates(ex, debt, halfAge){
+// ── Exterminator estimates: translate D + debt into population-scale damage ──
+// Age-dynamic: as the age probe slides along the retention curve, the estimates
+// split into "extracted so far" (0→age) and "remaining to extract" (age→80).
+function devastatorEstimates(ex, debt, halfAge, aLife, fnGood, fnBad){
   const D = ex.D;
 
-  // Per-person cognitive life-years lost
-  // D < 0.5: ~1-2 years (natural range, minimal extraction)
-  // D ≈ 1.0: ~5-6 years (threshold)
-  // D ≈ 1.5: ~8 years (mixed)
-  // D ≈ 2.5: ~15 years
-  // D > 4: ~20-25 years (high extraction)
-  let perPerson;
-  if(D < 0.5) perPerson = 1 + D * 2;
-  else if(D < 1.0) perPerson = 2 + (D - 0.5) * 6;
-  else if(D < 2.0) perPerson = 5 + (D - 1.0) * 5;
-  else if(D < 4.0) perPerson = 10 + (D - 2.0) * 4;
-  else perPerson = 18 + Math.min(7, (D - 4.0) * 2);
+  // Total per-person cognitive life-years lost (lifetime, from D)
+  let perPersonTotal;
+  if(D < 0.5) perPersonTotal = 1 + D * 2;
+  else if(D < 1.0) perPersonTotal = 2 + (D - 0.5) * 6;
+  else if(D < 2.0) perPersonTotal = 5 + (D - 1.0) * 5;
+  else if(D < 4.0) perPersonTotal = 10 + (D - 2.0) * 4;
+  else perPersonTotal = 18 + Math.min(7, (D - 4.0) * 2);
 
-  // Half-life penalty: if half-life < 40y, add extra years lost
   if(halfAge !== null && halfAge < 40){
-    perPerson += (40 - halfAge) * 0.3;
+    perPersonTotal += (40 - halfAge) * 0.3;
   }
 
-  // Population above D=1 — extrapolated from smartphone penetration model
-  // Currently ~4.5B (2025), growing to ~7B (2045). D determines what fraction
-  // of the connected population is in the extraction regime.
-  const popAboveD1 = 4.5e9; // current baseline
+  // Age-dynamic split: how much damage is already done vs remaining
+  // The "extracted so far" = fraction of the retention gap accumulated by age aLife
+  // Integrate (fnGood - fnBad) from 0 to aLife, divide by total integral 0 to ageMax
+  let extractedSoFar = 0;
+  let totalGap = 0;
+  const step = 0.5;
+  for(let a = 0; a < ageMax; a += step){
+    const g1 = fnGood(a), g2 = fnGood(a + step);
+    const b1 = fnBad(a), b2 = fnBad(a + step);
+    const seg = ((g1 - b1) + (g2 - b2)) * 0.5 * step;
+    totalGap += seg;
+    if(a < aLife) extractedSoFar += seg;
+  }
+  const fracExtracted = totalGap > 0 ? extractedSoFar / totalGap : 0;
 
-  // Economic equivalent: $10k per cognitive life-year (conservative)
+  // Per-person years already lost (at current age) vs remaining
+  const perPersonExtracted = perPersonTotal * fracExtracted;
+  const perPersonRemaining = perPersonTotal - perPersonExtracted;
+
+  const popAboveD1 = 4.5e9;
   const dollarPerYear = 10000;
 
-  // This person's lifetime contribution to the global debt
-  const personalDebtDollars = perPerson * dollarPerYear;
+  // Personal debt already incurred vs remaining
+  const personalDebtExtracted = perPersonExtracted * dollarPerYear;
+  const personalDebtRemaining = perPersonRemaining * dollarPerYear;
 
-  // Global cumulative debt if everyone at this D level (illustrative)
-  const globalDebtLifeYears = perPerson * popAboveD1;
+  // Global (based on total per-person, not age-split — population-level)
+  const globalDebtLifeYears = perPersonTotal * popAboveD1;
   const globalDebtDollars = globalDebtLifeYears * dollarPerYear;
 
   return {
     D: D,
-    perPersonYears: perPerson,
+    perPersonTotal: perPersonTotal,
+    perPersonExtracted: perPersonExtracted,
+    perPersonRemaining: perPersonRemaining,
+    fracExtracted: fracExtracted,
     popAboveD1: popAboveD1,
-    personalDebtDollars: personalDebtDollars,
+    personalDebtExtracted: personalDebtExtracted,
+    personalDebtRemaining: personalDebtRemaining,
     globalDebtLifeYears: globalDebtLifeYears,
     globalDebtDollars: globalDebtDollars,
   };
@@ -1448,7 +1462,7 @@ function updateCaptions(p, h){
   }
 }
 
-function narrativeHTML(a, p, h, ex, hyP, debt, halfAge, band, disc){
+function narrativeHTML(a, p, h, ex, hyP, debt, halfAge, band, disc, fnGood, fnBad){
   const rNow = retention(a, ex.lambdaQ, ex.D);
   const rGood = retention(a, hyP.lambdaQ, hyP.D);
 
@@ -1469,17 +1483,17 @@ function narrativeHTML(a, p, h, ex, hyP, debt, halfAge, band, disc){
   const halfAgeStr = halfAge === null ? ">80" : halfAge.toFixed(1);
   const debtStr = debt < 100 ? debt.toFixed(1) : Math.round(debt).toString();
 
-  // Devastator estimates — dynamic, update with every slider move
-  const dev = devastatorEstimates(ex, debt, halfAge);
+  // Exterminator estimates — age-dynamic, update as probe slides along curve
+  const dev = devastatorEstimates(ex, debt, halfAge, a, fnGood, fnBad);
   const isRU = LANG === "ru";
-  const devTitle = isRU ? "💀 ОПУСТОШИТЕЛЬ" : "💀 DEVASTATOR";
-  const devPerPersonLbl = isRU ? "на человека" : "per person";
-  const devGlobalLbl = isRU ? "глобально (4,5 млрд)" : "global (4.5B pop)";
+  const devTitle = isRU ? "💀 ИСТРЕБИТЕЛЬ" : "💀 EXTERMINATOR";
   const devYearsLbl = isRU ? "лет когниции" : "cog-years";
   const devDoomWarning = ex.D > 1
     ? (isRU ? `D=${ex.D.toFixed(2)} > 1: экстракция` : `D=${ex.D.toFixed(2)} > 1: extraction`)
     : (isRU ? `D=${ex.D.toFixed(2)} < 1: естественно` : `D=${ex.D.toFixed(2)} < 1: natural`);
   const devDoomColor = ex.D > 1 ? "#f0a0a0" : "#7dd3a8";
+
+  const pctDone = Math.max(0, Math.round(dev.fracExtracted * 100));
 
   return `
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
@@ -1492,7 +1506,7 @@ function narrativeHTML(a, p, h, ex, hyP, debt, halfAge, band, disc){
       <div style="color:${phaseColor};margin-top:2px;">debt=${debtStr} · ½-life=${halfAgeStr}${isRU?"г":"y"} · r≈${disc.toFixed(1)}%</div>
     </div>
 
-    <!-- Devastator block — dynamic estimates -->
+    <!-- Exterminator block — age-dynamic estimates -->
     <div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(240,160,160,.06);border:1px solid rgba(240,160,160,.20);">
       <div style="font-size:10px;font-weight:900;letter-spacing:1px;color:${devDoomColor};margin-bottom:5px;display:flex;align-items:center;gap:6px;">
         ${devTitle}
@@ -1500,15 +1514,23 @@ function narrativeHTML(a, p, h, ex, hyP, debt, halfAge, band, disc){
       </div>
       <div style="font-size:11px;color:var(--muted);line-height:1.4;font-family:ui-monospace,Menlo,Consolas,monospace;">
         <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
-          <span>${devPerPersonLbl}:</span>
-          <span style="color:${devDoomColor};font-weight:700;">${dev.perPersonYears.toFixed(1)} ${devYearsLbl}</span>
+          <span>${isRU?"всего (пожизненно)":"total (lifetime)"}:</span>
+          <span style="color:${devDoomColor};font-weight:700;">${dev.perPersonTotal.toFixed(1)} ${devYearsLbl}</span>
         </div>
         <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
-          <span>${isRU?"личный долг":"personal debt"}:</span>
-          <span style="color:#f0c878;font-weight:700;">${fmtBigNumber(dev.personalDebtDollars)}</span>
+          <span>${isRU?`извлечено (${pctDone}%)`:`extracted (${pctDone}%)`}:</span>
+          <span style="color:#f0a0a0;font-weight:700;">${Math.max(0, dev.perPersonExtracted).toFixed(1)} ${devYearsLbl}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+          <span>${isRU?"осталось извлечь":"remaining"}:</span>
+          <span style="color:#f0c878;font-weight:700;">${dev.perPersonRemaining.toFixed(1)} ${devYearsLbl}</span>
         </div>
         <div style="display:flex;justify-content:space-between;margin-bottom:2px;border-top:1px solid rgba(240,160,160,.15);padding-top:3px;">
-          <span>${devGlobalLbl}:</span>
+          <span>${isRU?"долг уже оплачен":"debt already paid"}:</span>
+          <span style="color:#f0a0a0;font-weight:700;">${fmtBigNumber(Math.max(0, dev.personalDebtExtracted))}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:2px;border-top:1px solid rgba(240,160,160,.15);padding-top:3px;">
+          <span>${isRU?"глобально (4,5 млрд)":"global (4.5B pop)"}:</span>
           <span style="color:#f0a0a0;font-weight:700;">${fmtLifeYears(dev.globalDebtLifeYears)} ${devYearsLbl}</span>
         </div>
         <div style="display:flex;justify-content:space-between;">
@@ -1620,7 +1642,7 @@ function draw(){
 
   footerRight.textContent = alarm + "  •  " + t().keys_hint;
 
-  narrativeEl.innerHTML = narrativeHTML(aLife, p, hy, ex, hyP, debt, halfAge, band, disc);
+  narrativeEl.innerHTML = narrativeHTML(aLife, p, hy, ex, hyP, debt, halfAge, band, disc, fnGood, fnBad);
 }
 
 function tick(ts){
