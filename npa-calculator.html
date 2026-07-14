@@ -543,7 +543,7 @@ button:active{ transform: translateY(0); }
 
   <div class="main">
     <!-- Chart -->
-    <section class="card chart">
+    <section class="card chart" data-fullscreen>
       <div class="chartArea">
         <div class="legendOverlay" aria-hidden="true">
           <span><span class="sw bad"></span><span id="t_legend_extraction"></span></span>
@@ -1552,5 +1552,6 @@ requestAnimationFrame(()=>{
   requestAnimationFrame(()=>requestAnimationFrame(tick));
 });
 </script>
+<script src="js/fs-toggle.js"></script>
 </body>
 </html>
