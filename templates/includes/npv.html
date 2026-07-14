@@ -177,7 +177,7 @@
   }));
   slideBtns[0].classList.add('active');
 
-  function fmt(x){ return (Math.round(x*1000)/1000).toLocaleString(null, {maximumFractionDigits:3}); }
+  function fmt(x){ return (Math.round(x*1000)/1000).toLocaleString(undefined, {maximumFractionDigits:3}); }
 
   function sphere(cx, cy, cz, r, n){
     n = n || 50;
