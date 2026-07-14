@@ -6,17 +6,17 @@
 <title>Калькулятор NPR (NPV→NPR) • DREAM/S2</title>
 <style>
 :root{
-  --bg:#0e1117;
-  --panel:#161b26;
-  --border:#2a3142;
-  --text:#e6e8ee;
-  --muted:#aab0c0;
-  --muted2:#7f879b;
-  --good:#7bd389;
-  --bad:#ff6b6b;
-  --neutral:#5da9ff;
-  --warn:#ffd166;
-  --shadow: 0 10px 30px rgba(0,0,0,.25);
+  --bg:#283548;
+  --panel:#3b4a5f;
+  --border:#54637a;
+  --text:#f1f5f9;
+  --muted:#c4d0df;
+  --muted2:#94a3b8;
+  --good:#7dd3a8;
+  --bad:#f0a0a0;
+  --neutral:#8ec5e8;
+  --warn:#f0c878;
+  --shadow: 0 10px 30px rgba(0,0,0,.20);
 }
 *{box-sizing:border-box}
 html, body{
@@ -295,58 +295,58 @@ button.danger{border-color:rgba(255,107,107,.55)}
   50% { box-shadow: 0 0 14px currentColor; }
 }
 
-/* Smaller, tighter legend */
+/* Readable legend */
 .legendOverlay{
-  font-size: 10.5px !important;
-  padding: 6px 8px !important;
-  gap: 6px 10px !important;
+  font-size: 12px !important;
+  padding: 8px 10px !important;
+  gap: 8px 12px !important;
 }
-.legendOverlay .sw{width:10px;height:10px;border-radius:3px;}
+.legendOverlay .sw{width:12px;height:12px;border-radius:3px;}
 
-/* Tighter slider labels */
-label{font-size:11px !important;}
-label b{font-size:11.5px !important;}
-.small{font-size:11px !important; line-height:1.3 !important;}
-.bullets{font-size:11.5px !important; line-height:1.25 !important;}
-.bullets li{margin:5px 0 !important;}
-.callout{font-size:11.5px !important; line-height:1.3 !important; padding:8px 10px !important;}
-h2{font-size:12px !important;}
+/* Readable slider labels */
+label{font-size:12.5px !important;}
+label b{font-size:13px !important;}
+.small{font-size:12px !important; line-height:1.35 !important;}
+.bullets{font-size:12.5px !important; line-height:1.3 !important;}
+.bullets li{margin:6px 0 !important;}
+.callout{font-size:12.5px !important; line-height:1.35 !important; padding:10px 12px !important;}
+h2{font-size:14px !important;}
 
-/* Slider styling — thinner, more polished */
+/* Slider styling — polished, readable */
 input[type=range]{
   -webkit-appearance:none;
   appearance:none;
-  height:4px;
-  border-radius:2px;
-  background:linear-gradient(90deg, #2a3142, #3a4256);
+  height:5px;
+  border-radius:3px;
+  background:linear-gradient(90deg, #54637a, #6b7a92);
   outline:none;
 }
 input[type=range]::-webkit-slider-thumb{
   -webkit-appearance:none;
   appearance:none;
-  width:14px;
-  height:14px;
+  width:16px;
+  height:16px;
   border-radius:50%;
-  background:#5da9ff;
-  box-shadow:0 0 8px rgba(93,169,255,.6);
+  background:#8ec5e8;
+  box-shadow:0 0 8px rgba(142,197,232,.5);
   cursor:pointer;
   transition: transform .15s ease;
 }
-input[type=range]::-webkit-slider-thumb:hover{ transform: scale(1.2); }
+input[type=range]::-webkit-slider-thumb:hover{ transform: scale(1.15); }
 input[type=range]::-moz-range-thumb{
-  width:14px;
-  height:14px;
+  width:16px;
+  height:16px;
   border-radius:50%;
-  background:#5da9ff;
+  background:#8ec5e8;
   border:none;
-  box-shadow:0 0 8px rgba(93,169,255,.6);
+  box-shadow:0 0 8px rgba(142,197,232,.5);
   cursor:pointer;
 }
 
 /* Button polish */
 button{
-  font-size:11px !important;
-  padding:6px 10px !important;
+  font-size:12.5px !important;
+  padding:7px 12px !important;
   border-radius:8px !important;
   transition: all .15s ease;
 }
@@ -837,25 +837,25 @@ function roundRect(x, y, w, h, r, fill, stroke){
   if(stroke) ctx.stroke();
 }
 
-// Smaller font scale — responsive to chart size
-function fontPx(size){ return Math.max(9, Math.min(size, Math.floor(plotH() / 36))); }
+// Readable font scale — responsive to chart size, minimum 11px
+function fontPx(size){ return Math.max(11, Math.min(size + 2, Math.floor(plotH() / 28))); }
 const FONT = "system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
 
 function drawAxes(w, h){
-  // Background gradient for the plot area
+  // Background gradient for the plot area — soft slate
   const bgGrad = ctx.createLinearGradient(0, pad, 0, h - pad);
-  bgGrad.addColorStop(0, "rgba(15,27,41,0.6)");
-  bgGrad.addColorStop(1, "rgba(12,16,25,0.9)");
+  bgGrad.addColorStop(0, "rgba(59,74,95,0.6)");
+  bgGrad.addColorStop(1, "rgba(40,53,72,0.9)");
   ctx.fillStyle = bgGrad;
   ctx.fillRect(pad, pad, w - 2*pad, h - 2*pad);
 
   // Subtle border glow on the plot area
-  ctx.strokeStyle = "rgba(93,169,255,0.15)";
+  ctx.strokeStyle = "rgba(96,165,250,0.15)";
   ctx.lineWidth = 1;
   roundRect(pad - 1, pad - 1, w - 2*pad + 2, h - 2*pad + 2, 10, false, true);
 
   // Main axes
-  ctx.strokeStyle = "#3a4256";
+  ctx.strokeStyle = "#475569";
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(pad, pad);
@@ -863,16 +863,16 @@ function drawAxes(w, h){
   ctx.lineTo(w - pad, h - pad);
   ctx.stroke();
 
-  // Tick labels — smaller, brighter
-  ctx.font = fontPx(10) + "px " + FONT;
-  ctx.fillStyle = "#7f879b";
+  // Tick labels — readable
+  ctx.font = fontPx(12) + "px " + FONT;
+  ctx.fillStyle = "#94a3b8";
 
   const xTicks = [0,10,20,30,40,50,60,70,80].filter(tick => tick <= ageMax);
   for(const tick of xTicks){
     const px = X(tick, w);
-    ctx.strokeStyle = "rgba(58,66,86,.18)";
+    ctx.strokeStyle = "rgba(71,85,105,.18)";
     ctx.beginPath(); ctx.moveTo(px, pad); ctx.lineTo(px, h - pad); ctx.stroke();
-    ctx.strokeStyle = "#3a4256";
+    ctx.strokeStyle = "#475569";
     ctx.beginPath(); ctx.moveTo(px, h - pad); ctx.lineTo(px, h - pad + 5); ctx.stroke();
     ctx.textAlign="center"; ctx.textBaseline="top";
     ctx.fillText(String(tick), px, h - pad + 7);
@@ -881,17 +881,17 @@ function drawAxes(w, h){
   const yTicks = [0,0.2,0.4,0.6,0.8,1.0];
   for(const tick of yTicks){
     const py = Y(tick, h);
-    ctx.strokeStyle = "rgba(58,66,86,.18)";
+    ctx.strokeStyle = "rgba(71,85,105,.18)";
     ctx.beginPath(); ctx.moveTo(pad, py); ctx.lineTo(w - pad, py); ctx.stroke();
-    ctx.strokeStyle = "#3a4256";
+    ctx.strokeStyle = "#475569";
     ctx.beginPath(); ctx.moveTo(pad - 5, py); ctx.lineTo(pad, py); ctx.stroke();
     ctx.textAlign="right"; ctx.textBaseline="middle";
     ctx.fillText(tick.toFixed(1), pad - 8, py);
   }
 
-  // Axis titles — smaller
-  ctx.fillStyle = "#aab0c0";
-  ctx.font = "600 " + fontPx(10) + "px " + FONT;
+  // Axis titles — readable
+  ctx.fillStyle = "#cbd5e1";
+  ctx.font = "600 " + fontPx(12) + "px " + FONT;
   ctx.textAlign="center"; ctx.textBaseline="bottom";
   ctx.fillText(t().axis_x, pad + (w - 2*pad)/2, h - 6);
 
@@ -962,11 +962,11 @@ function drawCurve(w, h, color, glowColor, fn, fillUnder){
 
 function fillDebt(w, h, fnGood, fnBad){
   ctx.save();
-  // Gradient fill for the debt zone — blue→neutral, more vivid
+  // Gradient fill for the debt zone — soft blue
   const grad = ctx.createLinearGradient(0, pad, 0, h - pad);
-  grad.addColorStop(0, "rgba(93,169,255,.22)");
-  grad.addColorStop(0.5, "rgba(93,169,255,.10)");
-  grad.addColorStop(1, "rgba(93,169,255,.02)");
+  grad.addColorStop(0, "rgba(96,165,250,.22)");
+  grad.addColorStop(0.5, "rgba(96,165,250,.10)");
+  grad.addColorStop(1, "rgba(96,165,250,.02)");
   ctx.fillStyle = grad;
   ctx.beginPath();
   for(let a=0; a<=ageMax; a+=0.5){
@@ -984,7 +984,7 @@ function fillDebt(w, h, fnGood, fnBad){
   ctx.fill();
 
   // Subtle dashed boundary on the good curve side
-  ctx.strokeStyle = "rgba(93,169,255,.30)";
+  ctx.strokeStyle = "rgba(96,165,250,.30)";
   ctx.lineWidth = 0.8;
   ctx.setLineDash([3, 4]);
   ctx.beginPath();
@@ -1015,18 +1015,18 @@ function findBand(fnBad){
 function drawBand(w, h, band){
   if(!band) return;
   ctx.save();
-  // Gradient band fill — amber glow
+  // Gradient band fill — soft amber
   const x1 = X(band.start, w);
   const x2 = X(band.end, w);
   const grad = ctx.createLinearGradient(x1, 0, x2, 0);
-  grad.addColorStop(0, "rgba(255,209,102,.04)");
-  grad.addColorStop(0.5, "rgba(255,209,102,.18)");
-  grad.addColorStop(1, "rgba(255,209,102,.04)");
+  grad.addColorStop(0, "rgba(240,200,120,.04)");
+  grad.addColorStop(0.5, "rgba(240,200,120,.16)");
+  grad.addColorStop(1, "rgba(240,200,120,.04)");
   ctx.fillStyle = grad;
   ctx.fillRect(x1, pad, Math.max(1, x2-x1), (h - 2*pad));
 
   // Dashed vertical boundaries
-  ctx.strokeStyle = "rgba(255,209,102,.35)";
+  ctx.strokeStyle = "rgba(240,200,120,.30)";
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
   ctx.beginPath(); ctx.moveTo(x1, pad); ctx.lineTo(x1, h - pad); ctx.stroke();
@@ -1041,37 +1041,37 @@ function drawLifeCursor(w, h, aLife, fnBad){
   const py = Y(r, h);
 
   ctx.save();
-  // Glowing vertical line
-  ctx.shadowColor = "#ffd166";
+  // Glowing vertical line — soft peach
+  ctx.shadowColor = "#f0c878";
   ctx.shadowBlur = 10;
-  ctx.strokeStyle = "rgba(255,209,102,.65)";
+  ctx.strokeStyle = "rgba(240,200,120,.60)";
   ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(px, pad); ctx.lineTo(px, h - pad); ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // Pulsing dot with glow
+  // Pulsing dot with glow — soft amber
   const pulse = 1 + 0.15 * Math.sin(Date.now() / 300);
-  ctx.shadowColor = "#ffd166";
+  ctx.shadowColor = "#f0c878";
   ctx.shadowBlur = 16;
-  ctx.fillStyle = "#ffd166";
+  ctx.fillStyle = "#f0c878";
   ctx.beginPath(); ctx.arc(px, py, 6 * pulse, 0, Math.PI*2); ctx.fill();
 
   // Inner bright core
   ctx.shadowBlur = 0;
-  ctx.fillStyle = "#fff5d6";
+  ctx.fillStyle = "#fff0d0";
   ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI*2); ctx.fill();
 
-  // Label tooltip — smaller font, polished
+  // Label tooltip — readable font, polished
   const label = t().cursor_fmt(aLife, r);
-  ctx.font = fontPx(10) + "px " + FONT;
+  ctx.font = fontPx(12) + "px " + FONT;
   const tw = ctx.measureText(label).width;
   const bx = Math.min(w - pad - tw - 16, px + 10);
   const by = Math.max(pad + 22, py - 10);
-  ctx.fillStyle = "rgba(12,16,25,.92)";
-  ctx.strokeStyle = "rgba(255,209,102,.40)";
+  ctx.fillStyle = "rgba(30,41,59,.92)";
+  ctx.strokeStyle = "rgba(240,200,120,.40)";
   ctx.lineWidth = 1;
   roundRect(bx, by - 18, tw + 12, 20, 6, true, true);
-  ctx.fillStyle = "#ffd166";
+  ctx.fillStyle = "#f0c878";
   ctx.textAlign="left"; ctx.textBaseline="bottom";
   ctx.fillText(label, bx + 6, by - 4);
   ctx.restore();
@@ -1231,9 +1231,9 @@ function draw(){
   if(showBand.checked) drawBand(w,h, band);
   if(shadeDebt.checked) fillDebt(w,h, fnGood, fnBad);
 
-  // Curves with glow + gradient fill underneath
-  drawCurve(w,h, "#ff6b6b", "#ff6b6b", fnBad, true);
-  drawCurve(w,h, "#7bd389", "#7bd389", fnGood, true);
+  // Curves with glow + gradient fill underneath — soft harmonious colors
+  drawCurve(w,h, "#f0a0a0", "#f0a0a0", fnBad, true);
+  drawCurve(w,h, "#7dd3a8", "#7dd3a8", fnGood, true);
 
   drawLifeCursor(w,h, aLife, fnBad);
 
@@ -1244,9 +1244,9 @@ function draw(){
     const px = X(aH, w);
 
     ctx.save();
-    ctx.shadowColor = "#5da9ff";
+    ctx.shadowColor = "#8ec5e8";
     ctx.shadowBlur = 8;
-    ctx.strokeStyle = "rgba(93,169,255,.60)";
+    ctx.strokeStyle = "rgba(142,197,232,.55)";
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(px, pad); ctx.lineTo(px, h - pad); ctx.stroke();
@@ -1254,24 +1254,24 @@ function draw(){
     ctx.shadowBlur = 0;
 
     // Dots on both curves at hover x
-    ctx.shadowColor = "#ff6b6b"; ctx.shadowBlur = 10;
-    ctx.fillStyle = "#ff6b6b";
+    ctx.shadowColor = "#f0a0a0"; ctx.shadowBlur = 10;
+    ctx.fillStyle = "#f0a0a0";
     ctx.beginPath(); ctx.arc(px, Y(rB, h), 4, 0, Math.PI*2); ctx.fill();
-    ctx.shadowColor = "#7bd389";
-    ctx.fillStyle = "#7bd389";
+    ctx.shadowColor = "#7dd3a8";
+    ctx.fillStyle = "#7dd3a8";
     ctx.beginPath(); ctx.arc(px, Y(rG, h), 4, 0, Math.PI*2); ctx.fill();
     ctx.shadowBlur = 0;
 
     const label = t().hover_fmt(aH, rB, rG);
-    ctx.font = fontPx(10) + "px " + FONT;
+    ctx.font = fontPx(12) + "px " + FONT;
     const tw = ctx.measureText(label).width;
     const bx = Math.min(w - pad - tw - 16, px + 10);
     const by = pad + 10;
-    ctx.fillStyle = "rgba(12,16,25,.92)";
-    ctx.strokeStyle = "rgba(93,169,255,.40)";
+    ctx.fillStyle = "rgba(30,41,59,.92)";
+    ctx.strokeStyle = "rgba(142,197,232,.40)";
     ctx.lineWidth = 1;
     roundRect(bx, by, tw + 12, 20, 6, true, true);
-    ctx.fillStyle = "#5da9ff";
+    ctx.fillStyle = "#8ec5e8";
     ctx.textAlign="left"; ctx.textBaseline="top";
     ctx.fillText(label, bx + 6, by + 5);
     ctx.restore();
