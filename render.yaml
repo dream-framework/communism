@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: tech-communism-groq
+    env: node
+    plan: free
+    numInstances: 1
+    autoDeploy: true
+    pullRequestPreviewsEnabled: false
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false   # set value in Render dashboard after first deploy
