@@ -585,6 +585,7 @@ button:active{ transform: translateY(0); }
     <a class="tab" href="ru/overview.html" data-ru="Технокоммунизм" data-en="Tech Communism">Технокоммунизм</a>
     <a class="tab" href="ru/altruists.html" data-ru="Власть альтруистов" data-en="Power to Altruists">Власть альтруистов</a>
     <a class="tab" href="ru/faq.html" data-ru="FAQ" data-en="FAQ">FAQ</a>
+    <a class="tab lang-toggle" href="#" id="navLangBtn" data-ru="EN" data-en="RU">EN</a>
   </div>
 </nav>
 
@@ -595,7 +596,6 @@ button:active{ transform: translateY(0); }
       <p class="kicker" id="t_kicker"></p>
     </div>
     <div class="badge-row">
-      <button class="langbtn" id="langBtn" aria-label="Toggle language"><span class="flagwrap"><span id="flagIcon" class="flagicon"></span><span id="flagLabel" class="flaglabel"></span></span></button>
       <div class="badge"><span class="dot bad"></span><span id="t_badge_extraction"></span></div>
       <div class="badge"><span class="dot good"></span><span id="t_badge_coherence"></span></div>
       <div class="badge"><span class="dot neutral"></span><span id="t_badge_debt"></span></div>
@@ -607,13 +607,6 @@ button:active{ transform: translateY(0); }
     <!-- Chart + controls (left column) -->
     <section class="card chart">
       <div class="chartArea">
-        <div class="legendOverlay" aria-hidden="true">
-          <span><span class="sw bad"></span><span id="t_legend_extraction"></span></span>
-          <span><span class="sw good"></span><span id="t_legend_coherence"></span></span>
-          <span><span class="sw neutral"></span><span id="t_legend_debt"></span></span>
-          <span><span class="sw warn"></span><span id="t_legend_age"></span></span>
-          <span><span class="sw band"></span><span id="t_legend_band"></span></span>
-        </div>
         <div class="canvasWrap">
           <canvas id="chart" aria-label="Retention curves over lifetime"></canvas>
         </div>
@@ -877,18 +870,11 @@ function t(){ return I18N[LANG]; }
 // one flag visible at a time: button shows the *target* language
 
 function updateLangButton(){
-  const btn = document.getElementById("langBtn");
-  const icon = document.getElementById("flagIcon");
-  const label = document.getElementById("flagLabel");
-  // Button shows the TARGET language
+  // Nav-bar language toggle: shows the TARGET language (EN when in RU, RU when in EN)
+  const btn = document.getElementById("navLangBtn");
+  if(!btn) return;
   const target = (LANG === "ru") ? "en" : "ru";
-  if(icon){
-    icon.classList.remove("en","ru");
-    icon.classList.add(target);
-  }
-  if(label){
-    label.textContent = (target === "en") ? "EN" : "RU";
-  }
+  btn.textContent = (target === "en") ? "EN" : "RU";
   btn.title = (target === "en") ? "Switch to English" : "Переключить на русский";
 }
 
@@ -1016,11 +1002,12 @@ tabPanel.addEventListener("click", ()=>setTab("p"));
 tabMapping.addEventListener("click", ()=>setTab("m"));
 
 // Language toggle
-document.getElementById("langBtn").addEventListener("click", ()=>{
+document.getElementById("navLangBtn").addEventListener("click", (e)=>{
+  e.preventDefault();
   LANG = (LANG === "ru") ? "en" : "ru";
   localStorage.setItem("lang", LANG);
   applyLang();
-  draw(); // refresh dynamic strings
+  draw(); // refresh dynamic strings (legend labels on canvas, narrative)
 });
 
 // Resize canvas to fit wrapper, DPR-aware
@@ -1136,6 +1123,34 @@ function drawAxes(w, h){
   ctx.textBaseline="top";
   ctx.fillText(t().axis_y, 0, 0);
   ctx.restore();
+
+  // Compact legend drawn directly on canvas (top-right inside plot area)
+  const legItems = [
+    {color: "#f0a0a0", label: t().legend_extraction},
+    {color: "#7dd3a8", label: t().legend_coherence},
+  ];
+  ctx.font = fontPx(11) + "px " + FONT;
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  let legX = w - pad;
+  // Right-align the legend block
+  const legWidths = legItems.map(it => 14 + ctx.measureText(it.label).width + 16);
+  const totalLegW = legWidths.reduce((a,b)=>a+b, 0);
+  legX = w - pad - totalLegW + 8;
+  const legY = pad + 10;
+  for(let i=0; i<legItems.length; i++){
+    const it = legItems[i];
+    // Color swatch
+    ctx.fillStyle = it.color;
+    ctx.shadowColor = it.color;
+    ctx.shadowBlur = 6;
+    ctx.fillRect(legX, legY - 5, 10, 10);
+    ctx.shadowBlur = 0;
+    // Label
+    ctx.fillStyle = "#c4d0df";
+    ctx.fillText(it.label, legX + 14, legY);
+    legX += legWidths[i];
+  }
 }
 
 // Glow curve with gradient fill underneath
