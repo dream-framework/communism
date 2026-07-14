@@ -74,7 +74,7 @@
 
 <h2 class="h2">NPV-симулятор: увидеть дисконтирование</h2>
 <p>Варьируйте <code>r</code>, <code>H</code>, <code>g</code> в симуляторе ниже и наблюдайте, как дисконтирование концентрирует стоимость в <code>t=0</code>. Смысл — проектировать институты, где скидка по времени не уничтожает потребности.</p>
-<div id="npv-toy" class="npv-toy">
+<div id="npv-toy" class="npv-toy" data-fullscreen>
   <div class="npv-row">
     <div class="npv-col npv-legend">
       <div class="npv-legend-item"><span class="swatch sw-blue"></span> Масса PV при t=0</div>
@@ -108,10 +108,10 @@
   </div>
 
   <div class="npv-main">
-    <div class="card npv-plot-card" data-fullscreen>
+    <div class="card npv-plot-card">
       <div id="npvplot" class="npv-plot"></div>
     </div>
-    <div class="card npv-bars-card" data-fullscreen>
+    <div class="card npv-bars-card">
       <div id="npv-bars" class="npv-bars"></div>
     </div>
   </div>
@@ -192,6 +192,32 @@
 .npv-status .nums{ color:#5da9ff; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:10.5px; }
 
 @keyframes npv-pulse{ 0%,100%{opacity:1;} 50%{opacity:.4;} }
+
+
+/* Fullscreen layout for the whole NPV toy */
+.npv-toy.fs-active{
+  overflow:auto !important;
+  padding:20px !important;
+  background:var(--bg, #283548) !important;
+}
+.npv-toy.fs-active .npv-plot,
+.npv-toy.fs-active .npv-bars{
+  height:60vh !important;
+  min-height:400px;
+}
+.npv-toy.fs-active .npv-main{
+  grid-template-columns:1fr 1fr !important;
+}
+@media (max-width: 900px){
+  .npv-toy.fs-active .npv-main{
+    grid-template-columns:1fr !important;
+  }
+  .npv-toy.fs-active .npv-plot,
+  .npv-toy.fs-active .npv-bars{
+    height:50vh !important;
+    min-height:300px;
+  }
+}
 </style>
 
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
