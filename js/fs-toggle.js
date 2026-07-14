@@ -136,20 +136,22 @@
       target.querySelector('.fs-btn').setAttribute('aria-label', 'Maximize chart');
     }
 
-    // Notify charting libraries to resize
-    setTimeout(() => {
-      // Plotly charts: find the actual chart div inside the fullscreen target
-      if (window.Plotly) {
-        const plotDivs = target.querySelectorAll('#npvplot, #npv-bars, .js-plotly-plot');
-        plotDivs.forEach(d => {
-          try { Plotly.Plots.resize(d); } catch(e) {}
-        });
-      }
-      // For canvas charts, dispatch a resize event so the app redraws
-      if (target.querySelector('canvas')) {
-        window.dispatchEvent(new Event('resize'));
-      }
-    }, 300);
+    // Notify charting libraries to resize — multiple passes for reliability
+    [300, 600, 1000].forEach(delay => {
+      setTimeout(() => {
+        // Plotly charts: find the actual chart div inside the fullscreen target
+        if (window.Plotly) {
+          const plotDivs = target.querySelectorAll('#npvplot, #npv-bars, .js-plotly-plot');
+          plotDivs.forEach(d => {
+            try { Plotly.Plots.resize(d); } catch(e) {}
+          });
+        }
+        // For canvas charts, dispatch a resize event so the app redraws
+        if (target.querySelector('canvas')) {
+          window.dispatchEvent(new Event('resize'));
+        }
+      }, delay);
+    });
   }
 
   function init(target) {
