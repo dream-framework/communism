@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Калькулятор NPR (NPV→NPR) • DREAM/S2</title>
+<link rel="stylesheet" href="css/global.css">
 <style>
 :root{
   --bg:#283548;
@@ -30,69 +31,10 @@ html, body{
   flex-direction:column;
 }
 
-/* ── Site nav band ── */
-.site-nav{
-  display:flex;
-  gap:14px;
-  align-items:center;
-  justify-content:space-between;
-  padding:8px 16px;
-  background:rgba(40,53,72,.80);
-  backdrop-filter:blur(6px);
-  border-bottom:1px solid var(--border);
-  z-index:100;
+/* Override global.css .nav for this full-screen page: not sticky, flex-shrink */
+.nav{
+  position:relative;
   flex-shrink:0;
-}
-.site-nav .brand{
-  font-weight:900;
-  font-size:14px;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  white-space:nowrap;
-}
-.site-nav .brand-mark{
-  width:18px;
-  height:20px;
-  flex-shrink:0;
-}
-.site-nav .brand-mark .star{
-  animation:tc-blink 3s steps(2,end) infinite;
-}
-@keyframes tc-blink{
-  0% { opacity: 1; }
-  50%{ opacity: .25; }
-  100%{ opacity: 1; }
-}
-.site-nav .tabs{
-  display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-}
-.site-nav .tab{
-  padding:6px 10px;
-  border:1px solid var(--border);
-  border-radius:999px;
-  font-size:11px;
-  color:var(--text);
-  text-decoration:none;
-  transition: all .15s ease;
-}
-.site-nav .tab:hover{
-  background:rgba(142,197,232,.10);
-  border-color:rgba(142,197,232,.4);
-}
-.site-nav .tab.active{
-  background:linear-gradient(90deg,rgba(142,197,232,.15),rgba(240,200,120,.15));
-  border-color:rgba(142,197,232,.5);
-}
-@media (prefers-reduced-motion: reduce){
-  .site-nav .brand-mark .star{ animation: none; }
-}
-@media (max-width: 980px){
-  .site-nav{ flex-direction:column; gap:6px; padding:6px 10px; }
-  .site-nav .tabs{ gap:4px; }
-  .site-nav .tab{ padding:4px 8px; font-size:10px; }
 }
 
 .container{
@@ -428,8 +370,8 @@ button:active{ transform: translateY(0); }
 
 <body>
 
-<!-- Site navigation band -->
-<nav class="site-nav">
+<!-- Site navigation band (same .nav class as all other pages) -->
+<nav class="nav">
   <div class="brand">
     <svg class="brand-mark" viewBox="0 0 64 72" aria-hidden="true" focusable="false">
       <path class="star"
@@ -821,7 +763,7 @@ function applyLang(){
   // Update nav band labels + brand text
   const navBrand = document.getElementById("navBrand");
   if(navBrand) navBrand.textContent = (LANG === "ru") ? "Контуры коммунистического будущего" : "Tech Communism";
-  document.querySelectorAll(".site-nav .tab").forEach(tab => {
+  document.querySelectorAll(".nav .tab").forEach(tab => {
     const txt = tab.getAttribute("data-" + LANG);
     if(txt) tab.textContent = txt;
   });
