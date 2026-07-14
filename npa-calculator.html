@@ -1162,7 +1162,7 @@ function narrativeHTML(a, p, h, ex, hyP, debt, halfAge, band, disc){
   const lineNums = t().nums(ex, hyP, debt, halfAge);
 
   // Live status badge — color-coded by extraction severity
-  const sevColor = extractionRegime === "high" ? "#ff6b6b" : extractionRegime === "mixed" ? "#ffd166" : "#7bd389";
+  const sevColor = extractionRegime === "high" ? "#f0a0a0" : extractionRegime === "mixed" ? "#f0c878" : "#7dd3a8";
   const sevText = extractionRegime === "high" ? (LANG === "ru" ? "ВЫСОКАЯ ЭКСТРАКЦИЯ" : "HIGH EXTRACTION")
                 : extractionRegime === "mixed" ? (LANG === "ru" ? "СМЕШАННЫЙ РЕЖИМ" : "MIXED REGIME")
                 : (LANG === "ru" ? "НИЗКАЯ ЭКСТРАКЦИЯ" : "LOW EXTRACTION");
