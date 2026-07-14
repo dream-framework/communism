@@ -1370,6 +1370,71 @@ function discountRatePct(p){
   return SETTINGS.DISCOUNT_MIN_PCT + tt*(SETTINGS.DISCOUNT_MAX_PCT - SETTINGS.DISCOUNT_MIN_PCT);
 }
 
+// ── Devastator estimates: translate D + debt into population-scale damage ──
+// Calibrated against the NPA manifesto's projections (27B → 80B → 160B life-years)
+function devastatorEstimates(ex, debt, halfAge){
+  const D = ex.D;
+
+  // Per-person cognitive life-years lost
+  // D < 0.5: ~1-2 years (natural range, minimal extraction)
+  // D ≈ 1.0: ~5-6 years (threshold)
+  // D ≈ 1.5: ~8 years (mixed)
+  // D ≈ 2.5: ~15 years
+  // D > 4: ~20-25 years (high extraction)
+  let perPerson;
+  if(D < 0.5) perPerson = 1 + D * 2;
+  else if(D < 1.0) perPerson = 2 + (D - 0.5) * 6;
+  else if(D < 2.0) perPerson = 5 + (D - 1.0) * 5;
+  else if(D < 4.0) perPerson = 10 + (D - 2.0) * 4;
+  else perPerson = 18 + Math.min(7, (D - 4.0) * 2);
+
+  // Half-life penalty: if half-life < 40y, add extra years lost
+  if(halfAge !== null && halfAge < 40){
+    perPerson += (40 - halfAge) * 0.3;
+  }
+
+  // Population above D=1 — extrapolated from smartphone penetration model
+  // Currently ~4.5B (2025), growing to ~7B (2045). D determines what fraction
+  // of the connected population is in the extraction regime.
+  const popAboveD1 = 4.5e9; // current baseline
+
+  // Economic equivalent: $10k per cognitive life-year (conservative)
+  const dollarPerYear = 10000;
+
+  // This person's lifetime contribution to the global debt
+  const personalDebtDollars = perPerson * dollarPerYear;
+
+  // Global cumulative debt if everyone at this D level (illustrative)
+  const globalDebtLifeYears = perPerson * popAboveD1;
+  const globalDebtDollars = globalDebtLifeYears * dollarPerYear;
+
+  return {
+    D: D,
+    perPersonYears: perPerson,
+    popAboveD1: popAboveD1,
+    personalDebtDollars: personalDebtDollars,
+    globalDebtLifeYears: globalDebtLifeYears,
+    globalDebtDollars: globalDebtDollars,
+  };
+}
+
+function fmtBigNumber(n){
+  if(n >= 1e15) return '$' + (n/1e15).toFixed(1) + 'Q';     // quadrillion
+  if(n >= 1e12) return '$' + (n/1e12).toFixed(1) + 'T';     // trillion
+  if(n >= 1e9)  return '$' + (n/1e9).toFixed(1) + 'B';      // billion
+  if(n >= 1e6)  return '$' + (n/1e6).toFixed(1) + 'M';      // million
+  if(n >= 1e3)  return '$' + (n/1e3).toFixed(1) + 'k';
+  return '$' + Math.round(n);
+}
+
+function fmtLifeYears(n){
+  if(n >= 1e12) return (n/1e12).toFixed(1) + 'T';
+  if(n >= 1e9)  return (n/1e9).toFixed(1) + 'B';
+  if(n >= 1e6)  return (n/1e6).toFixed(1) + 'M';
+  if(n >= 1e3)  return (n/1e3).toFixed(1) + 'k';
+  return Math.round(n).toString();
+}
+
 function updateCaptions(p, h){
   if(probeCaption){
     if(p < 3) probeCaption.textContent = t().probe_caption_low;
@@ -1404,6 +1469,18 @@ function narrativeHTML(a, p, h, ex, hyP, debt, halfAge, band, disc){
   const halfAgeStr = halfAge === null ? ">80" : halfAge.toFixed(1);
   const debtStr = debt < 100 ? debt.toFixed(1) : Math.round(debt).toString();
 
+  // Devastator estimates — dynamic, update with every slider move
+  const dev = devastatorEstimates(ex, debt, halfAge);
+  const isRU = LANG === "ru";
+  const devTitle = isRU ? "💀 ОПУСТОШИТЕЛЬ" : "💀 DEVASTATOR";
+  const devPerPersonLbl = isRU ? "на человека" : "per person";
+  const devGlobalLbl = isRU ? "глобально (4,5 млрд)" : "global (4.5B pop)";
+  const devYearsLbl = isRU ? "лет когниции" : "cog-years";
+  const devDoomWarning = ex.D > 1
+    ? (isRU ? `D=${ex.D.toFixed(2)} > 1: экстракция` : `D=${ex.D.toFixed(2)} > 1: extraction`)
+    : (isRU ? `D=${ex.D.toFixed(2)} < 1: естественно` : `D=${ex.D.toFixed(2)} < 1: natural`);
+  const devDoomColor = ex.D > 1 ? "#f0a0a0" : "#7dd3a8";
+
   return `
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
       <span style="width:8px;height:8px;border-radius:50%;background:${sevColor};box-shadow:0 0 8px ${sevColor};animation:tc-blink 1.5s ease-in-out infinite;flex-shrink:0;"></span>
@@ -1412,13 +1489,37 @@ function narrativeHTML(a, p, h, ex, hyP, debt, halfAge, band, disc){
     </div>
     <div style="font-size:12px;color:#8ec5e8;font-family:ui-monospace,Menlo,Consolas,monospace;margin-bottom:6px;padding:5px 8px;border-radius:6px;background:rgba(142,197,232,.06);border:1px solid rgba(142,197,232,.15);">
       <div>age ${a.toFixed(1)} · R<sub style="font-size:9px">extr</sub>=${rNow.toFixed(3)} · R<sub style="font-size:9px">coh</sub>=${rGood.toFixed(3)}</div>
-      <div style="color:${phaseColor};margin-top:2px;">debt=${debtStr} · ½-life=${halfAgeStr}${LANG==="ru"?"г":"y"} · r≈${disc.toFixed(1)}%</div>
+      <div style="color:${phaseColor};margin-top:2px;">debt=${debtStr} · ½-life=${halfAgeStr}${isRU?"г":"y"} · r≈${disc.toFixed(1)}%</div>
     </div>
-    <div style="font-size:11px;color:var(--muted);line-height:1.35;">
+
+    <!-- Devastator block — dynamic estimates -->
+    <div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(240,160,160,.06);border:1px solid rgba(240,160,160,.20);">
+      <div style="font-size:10px;font-weight:900;letter-spacing:1px;color:${devDoomColor};margin-bottom:5px;display:flex;align-items:center;gap:6px;">
+        ${devTitle}
+        <span style="font-size:9px;font-weight:400;color:var(--muted2);margin-left:auto;">${devDoomWarning}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.4;font-family:ui-monospace,Menlo,Consolas,monospace;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+          <span>${devPerPersonLbl}:</span>
+          <span style="color:${devDoomColor};font-weight:700;">${dev.perPersonYears.toFixed(1)} ${devYearsLbl}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+          <span>${isRU?"личный долг":"personal debt"}:</span>
+          <span style="color:#f0c878;font-weight:700;">${fmtBigNumber(dev.personalDebtDollars)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:2px;border-top:1px solid rgba(240,160,160,.15);padding-top:3px;">
+          <span>${devGlobalLbl}:</span>
+          <span style="color:#f0a0a0;font-weight:700;">${fmtLifeYears(dev.globalDebtLifeYears)} ${devYearsLbl}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>${isRU?"глобальный эквивалент":"global equivalent"}:</span>
+          <span style="color:#f0a0a0;font-weight:700;">${fmtBigNumber(dev.globalDebtDollars)}</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--muted);line-height:1.35;margin-top:6px;">
       ${extractionRegime === "high" ? t().narrative_regime_high : extractionRegime === "mixed" ? t().narrative_regime_mid : t().narrative_regime_low}
-    </div>
-    <div style="font-size:11px;color:var(--muted2);line-height:1.35;margin-top:3px;">
-      ${t().narrative_lineNPV(disc)}
     </div>
   `;
 }
