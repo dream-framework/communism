@@ -284,6 +284,75 @@ button.danger{border-color:rgba(255,107,107,.55)}
   .main{grid-template-columns:1fr;}
   #footerRight{max-width:none;}
 }
+
+/* Pulse / blink animations for dynamic elements */
+@keyframes tc-blink{
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes tc-pulse-glow{
+  0%, 100% { box-shadow: 0 0 6px currentColor; }
+  50% { box-shadow: 0 0 14px currentColor; }
+}
+
+/* Smaller, tighter legend */
+.legendOverlay{
+  font-size: 10.5px !important;
+  padding: 6px 8px !important;
+  gap: 6px 10px !important;
+}
+.legendOverlay .sw{width:10px;height:10px;border-radius:3px;}
+
+/* Tighter slider labels */
+label{font-size:11px !important;}
+label b{font-size:11.5px !important;}
+.small{font-size:11px !important; line-height:1.3 !important;}
+.bullets{font-size:11.5px !important; line-height:1.25 !important;}
+.bullets li{margin:5px 0 !important;}
+.callout{font-size:11.5px !important; line-height:1.3 !important; padding:8px 10px !important;}
+h2{font-size:12px !important;}
+
+/* Slider styling — thinner, more polished */
+input[type=range]{
+  -webkit-appearance:none;
+  appearance:none;
+  height:4px;
+  border-radius:2px;
+  background:linear-gradient(90deg, #2a3142, #3a4256);
+  outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  appearance:none;
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:#5da9ff;
+  box-shadow:0 0 8px rgba(93,169,255,.6);
+  cursor:pointer;
+  transition: transform .15s ease;
+}
+input[type=range]::-webkit-slider-thumb:hover{ transform: scale(1.2); }
+input[type=range]::-moz-range-thumb{
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:#5da9ff;
+  border:none;
+  box-shadow:0 0 8px rgba(93,169,255,.6);
+  cursor:pointer;
+}
+
+/* Button polish */
+button{
+  font-size:11px !important;
+  padding:6px 10px !important;
+  border-radius:8px !important;
+  transition: all .15s ease;
+}
+button:hover{ transform: translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.3); }
+button:active{ transform: translateY(0); }
+
 </style>
 </head>
 
@@ -768,7 +837,24 @@ function roundRect(x, y, w, h, r, fill, stroke){
   if(stroke) ctx.stroke();
 }
 
+// Smaller font scale — responsive to chart size
+function fontPx(size){ return Math.max(9, Math.min(size, Math.floor(plotH() / 36))); }
+const FONT = "system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+
 function drawAxes(w, h){
+  // Background gradient for the plot area
+  const bgGrad = ctx.createLinearGradient(0, pad, 0, h - pad);
+  bgGrad.addColorStop(0, "rgba(15,27,41,0.6)");
+  bgGrad.addColorStop(1, "rgba(12,16,25,0.9)");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(pad, pad, w - 2*pad, h - 2*pad);
+
+  // Subtle border glow on the plot area
+  ctx.strokeStyle = "rgba(93,169,255,0.15)";
+  ctx.lineWidth = 1;
+  roundRect(pad - 1, pad - 1, w - 2*pad + 2, h - 2*pad + 2, 10, false, true);
+
+  // Main axes
   ctx.strokeStyle = "#3a4256";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -777,48 +863,79 @@ function drawAxes(w, h){
   ctx.lineTo(w - pad, h - pad);
   ctx.stroke();
 
-  ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
-  ctx.fillStyle = "#aab0c0";
+  // Tick labels — smaller, brighter
+  ctx.font = fontPx(10) + "px " + FONT;
+  ctx.fillStyle = "#7f879b";
 
   const xTicks = [0,10,20,30,40,50,60,70,80].filter(tick => tick <= ageMax);
   for(const tick of xTicks){
     const px = X(tick, w);
-    ctx.strokeStyle = "rgba(58,66,86,.25)";
+    ctx.strokeStyle = "rgba(58,66,86,.18)";
     ctx.beginPath(); ctx.moveTo(px, pad); ctx.lineTo(px, h - pad); ctx.stroke();
     ctx.strokeStyle = "#3a4256";
-    ctx.beginPath(); ctx.moveTo(px, h - pad); ctx.lineTo(px, h - pad + 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, h - pad); ctx.lineTo(px, h - pad + 5); ctx.stroke();
     ctx.textAlign="center"; ctx.textBaseline="top";
-    ctx.fillText(String(tick), px, h - pad + 8);
+    ctx.fillText(String(tick), px, h - pad + 7);
   }
 
   const yTicks = [0,0.2,0.4,0.6,0.8,1.0];
   for(const tick of yTicks){
     const py = Y(tick, h);
-    ctx.strokeStyle = "rgba(58,66,86,.25)";
+    ctx.strokeStyle = "rgba(58,66,86,.18)";
     ctx.beginPath(); ctx.moveTo(pad, py); ctx.lineTo(w - pad, py); ctx.stroke();
     ctx.strokeStyle = "#3a4256";
-    ctx.beginPath(); ctx.moveTo(pad - 6, py); ctx.lineTo(pad, py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad - 5, py); ctx.lineTo(pad, py); ctx.stroke();
     ctx.textAlign="right"; ctx.textBaseline="middle";
-    ctx.fillText(tick.toFixed(1), pad - 10, py);
+    ctx.fillText(tick.toFixed(1), pad - 8, py);
   }
 
-  ctx.fillStyle = "#e6e8ee";
+  // Axis titles — smaller
+  ctx.fillStyle = "#aab0c0";
+  ctx.font = "600 " + fontPx(10) + "px " + FONT;
   ctx.textAlign="center"; ctx.textBaseline="bottom";
-  ctx.fillText(t().axis_x, pad + (w - 2*pad)/2, h - 10);
+  ctx.fillText(t().axis_x, pad + (w - 2*pad)/2, h - 6);
 
   ctx.save();
-  ctx.translate(18, pad + (h - 2*pad)/2);
+  ctx.translate(14, pad + (h - 2*pad)/2);
   ctx.rotate(-Math.PI/2);
   ctx.textBaseline="top";
   ctx.fillText(t().axis_y, 0, 0);
   ctx.restore();
 }
 
-function drawCurve(w, h, color, fn){
+// Glow curve with gradient fill underneath
+function drawCurve(w, h, color, glowColor, fn, fillUnder){
+  ctx.save();
+
+  // Fill under the curve (gradient fade)
+  if(fillUnder){
+    const grad = ctx.createLinearGradient(0, pad, 0, h - pad);
+    grad.addColorStop(0, glowColor + "33");
+    grad.addColorStop(1, glowColor + "03");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    for(let a=0; a<=ageMax; a+=0.25){
+      const r = fn(a);
+      const px = X(a, w);
+      const py = Y(r, h);
+      if(a===0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.lineTo(X(ageMax, w), h - pad);
+    ctx.lineTo(X(0, w), h - pad);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Glow pass (wide, low-alpha)
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur = 14;
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.2;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
   ctx.beginPath();
-  for(let a=0; a<=ageMax; a+=0.25){
+  for(let a=0; a<=ageMax; a+=0.2){
     const r = fn(a);
     const px = X(a, w);
     const py = Y(r, h);
@@ -826,11 +943,31 @@ function drawCurve(w, h, color, fn){
     else ctx.lineTo(px, py);
   }
   ctx.stroke();
+
+  // Sharp pass (thin, opaque, no shadow)
+  ctx.shadowBlur = 0;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  for(let a=0; a<=ageMax; a+=0.2){
+    const r = fn(a);
+    const px = X(a, w);
+    const py = Y(r, h);
+    if(a===0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 function fillDebt(w, h, fnGood, fnBad){
   ctx.save();
-  ctx.fillStyle = "rgba(93,169,255,.10)";
+  // Gradient fill for the debt zone — blue→neutral, more vivid
+  const grad = ctx.createLinearGradient(0, pad, 0, h - pad);
+  grad.addColorStop(0, "rgba(93,169,255,.22)");
+  grad.addColorStop(0.5, "rgba(93,169,255,.10)");
+  grad.addColorStop(1, "rgba(93,169,255,.02)");
+  ctx.fillStyle = grad;
   ctx.beginPath();
   for(let a=0; a<=ageMax; a+=0.5){
     const px = X(a, w);
@@ -845,6 +982,20 @@ function fillDebt(w, h, fnGood, fnBad){
   }
   ctx.closePath();
   ctx.fill();
+
+  // Subtle dashed boundary on the good curve side
+  ctx.strokeStyle = "rgba(93,169,255,.30)";
+  ctx.lineWidth = 0.8;
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath();
+  for(let a=0; a<=ageMax; a+=0.5){
+    const px = X(a, w);
+    const py = Y(fnGood(a), h);
+    if(a===0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
   ctx.restore();
 }
 
@@ -864,10 +1015,23 @@ function findBand(fnBad){
 function drawBand(w, h, band){
   if(!band) return;
   ctx.save();
-  ctx.fillStyle = "rgba(255,209,102,.10)";
+  // Gradient band fill — amber glow
   const x1 = X(band.start, w);
   const x2 = X(band.end, w);
+  const grad = ctx.createLinearGradient(x1, 0, x2, 0);
+  grad.addColorStop(0, "rgba(255,209,102,.04)");
+  grad.addColorStop(0.5, "rgba(255,209,102,.18)");
+  grad.addColorStop(1, "rgba(255,209,102,.04)");
+  ctx.fillStyle = grad;
   ctx.fillRect(x1, pad, Math.max(1, x2-x1), (h - 2*pad));
+
+  // Dashed vertical boundaries
+  ctx.strokeStyle = "rgba(255,209,102,.35)";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(x1, pad); ctx.lineTo(x1, h - pad); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x2, pad); ctx.lineTo(x2, h - pad); ctx.stroke();
+  ctx.setLineDash([]);
   ctx.restore();
 }
 
@@ -876,25 +1040,41 @@ function drawLifeCursor(w, h, aLife, fnBad){
   const px = X(aLife, w);
   const py = Y(r, h);
 
-  ctx.strokeStyle = "rgba(255,209,102,.55)";
+  ctx.save();
+  // Glowing vertical line
+  ctx.shadowColor = "#ffd166";
+  ctx.shadowBlur = 10;
+  ctx.strokeStyle = "rgba(255,209,102,.65)";
   ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(px, pad); ctx.lineTo(px, h - pad); ctx.stroke();
+  ctx.shadowBlur = 0;
 
+  // Pulsing dot with glow
+  const pulse = 1 + 0.15 * Math.sin(Date.now() / 300);
+  ctx.shadowColor = "#ffd166";
+  ctx.shadowBlur = 16;
   ctx.fillStyle = "#ffd166";
-  ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px, py, 6 * pulse, 0, Math.PI*2); ctx.fill();
 
+  // Inner bright core
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#fff5d6";
+  ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI*2); ctx.fill();
+
+  // Label tooltip — smaller font, polished
   const label = t().cursor_fmt(aLife, r);
-  ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+  ctx.font = fontPx(10) + "px " + FONT;
   const tw = ctx.measureText(label).width;
-  const bx = Math.min(w - pad - tw - 18, px + 10);
+  const bx = Math.min(w - pad - tw - 16, px + 10);
   const by = Math.max(pad + 22, py - 10);
-  ctx.fillStyle = "rgba(12,16,25,.9)";
-  ctx.strokeStyle = "rgba(42,49,66,.9)";
+  ctx.fillStyle = "rgba(12,16,25,.92)";
+  ctx.strokeStyle = "rgba(255,209,102,.40)";
   ctx.lineWidth = 1;
-  roundRect(bx, by - 18, tw + 12, 20, 8, true, true);
-  ctx.fillStyle = "#e6e8ee";
+  roundRect(bx, by - 18, tw + 12, 20, 6, true, true);
+  ctx.fillStyle = "#ffd166";
   ctx.textAlign="left"; ctx.textBaseline="bottom";
   ctx.fillText(label, bx + 6, by - 4);
+  ctx.restore();
 }
 
 // --- Hover
@@ -981,7 +1161,27 @@ function narrativeHTML(a, p, h, ex, hyP, debt, halfAge, band, disc){
   const bandLine = band ? t().band_yes(band.start, band.end) : t().band_no;
   const lineNums = t().nums(ex, hyP, debt, halfAge);
 
+  // Live status badge — color-coded by extraction severity
+  const sevColor = extractionRegime === "high" ? "#ff6b6b" : extractionRegime === "mixed" ? "#ffd166" : "#7bd389";
+  const sevText = extractionRegime === "high" ? (LANG === "ru" ? "ВЫСОКАЯ ЭКСТРАКЦИЯ" : "HIGH EXTRACTION")
+                : extractionRegime === "mixed" ? (LANG === "ru" ? "СМЕШАННЫЙ РЕЖИМ" : "MIXED REGIME")
+                : (LANG === "ru" ? "НИЗКАЯ ЭКСТРАКЦИЯ" : "LOW EXTRACTION");
+
+  // Dynamic headline that changes with the numbers
+  const debtPct = (debt / 10).toFixed(1);
+  const halfAgeStr = halfAge === null ? (LANG === "ru" ? ">80" : ">80") : halfAge.toFixed(1);
+  const headline = LANG === "ru"
+    ? `Возраст ${a.toFixed(1)} · R=${retention(a, ex.lambdaQ, ex.D).toFixed(3)} · долг=${debt.toFixed(1)} · полужизнь=${halfAgeStr}г`
+    : `Age ${a.toFixed(1)} · R=${retention(a, ex.lambdaQ, ex.D).toFixed(3)} · debt=${debt.toFixed(1)} · half-life=${halfAgeStr}y`;
+
   return `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sevColor};box-shadow:0 0 8px ${sevColor};animation:tc-blink 1.5s ease-in-out infinite;"></span>
+      <span style="font-size:10px;font-weight:900;letter-spacing:1px;color:${sevColor};">${sevText}</span>
+    </div>
+    <div style="font-size:11px;color:#5da9ff;font-family:ui-monospace,Menlo,Consolas,monospace;margin-bottom:8px;padding:5px 8px;border-radius:6px;background:rgba(93,169,255,.06);border:1px solid rgba(93,169,255,.15);">
+      ${headline}
+    </div>
     <ul class="bullets">
       <li>${lineRegime}</li>
       <li class="small">${lineNPV}</li>
@@ -1031,8 +1231,9 @@ function draw(){
   if(showBand.checked) drawBand(w,h, band);
   if(shadeDebt.checked) fillDebt(w,h, fnGood, fnBad);
 
-  drawCurve(w,h, "#ff6b6b", fnBad);
-  drawCurve(w,h, "#7bd389", fnGood);
+  // Curves with glow + gradient fill underneath
+  drawCurve(w,h, "#ff6b6b", "#ff6b6b", fnBad, true);
+  drawCurve(w,h, "#7bd389", "#7bd389", fnGood, true);
 
   drawLifeCursor(w,h, aLife, fnBad);
 
@@ -1042,22 +1243,38 @@ function draw(){
     const rG = fnGood(aH);
     const px = X(aH, w);
 
-    ctx.strokeStyle = "rgba(93,169,255,.55)";
+    ctx.save();
+    ctx.shadowColor = "#5da9ff";
+    ctx.shadowBlur = 8;
+    ctx.strokeStyle = "rgba(93,169,255,.60)";
     ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(px, pad); ctx.lineTo(px, h - pad); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
+
+    // Dots on both curves at hover x
+    ctx.shadowColor = "#ff6b6b"; ctx.shadowBlur = 10;
+    ctx.fillStyle = "#ff6b6b";
+    ctx.beginPath(); ctx.arc(px, Y(rB, h), 4, 0, Math.PI*2); ctx.fill();
+    ctx.shadowColor = "#7bd389";
+    ctx.fillStyle = "#7bd389";
+    ctx.beginPath(); ctx.arc(px, Y(rG, h), 4, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
 
     const label = t().hover_fmt(aH, rB, rG);
-    ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    ctx.font = fontPx(10) + "px " + FONT;
     const tw = ctx.measureText(label).width;
-    const bx = Math.min(w - pad - tw - 18, px + 10);
+    const bx = Math.min(w - pad - tw - 16, px + 10);
     const by = pad + 10;
-    ctx.fillStyle = "rgba(12,16,25,.9)";
-    ctx.strokeStyle = "rgba(42,49,66,.9)";
+    ctx.fillStyle = "rgba(12,16,25,.92)";
+    ctx.strokeStyle = "rgba(93,169,255,.40)";
     ctx.lineWidth = 1;
-    roundRect(bx, by, tw + 12, 20, 8, true, true);
-    ctx.fillStyle = "#e6e8ee";
+    roundRect(bx, by, tw + 12, 20, 6, true, true);
+    ctx.fillStyle = "#5da9ff";
     ctx.textAlign="left"; ctx.textBaseline="top";
-    ctx.fillText(label, bx + 6, by + 4);
+    ctx.fillText(label, bx + 6, by + 5);
+    ctx.restore();
 
     footerLeft.textContent = label;
   }else{
