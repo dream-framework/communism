@@ -217,9 +217,9 @@ canvas{
 .tabcontent{
   padding:12px;
   min-height:0;
-  overflow:hidden;
+  overflow:auto;
 }
-.tabpane{display:none; height:100%;}
+.tabpane{display:none; height:auto;}
 .tabpane.active{display:block;}
 
 h2{
@@ -289,12 +289,146 @@ button.danger{border-color:rgba(255,107,107,.55)}
 }
 .toggle input{transform: translateY(1px);}
 
-/* Responsive */
+/* Responsive — make everything scrollable & accessible on mobile */
 @media (max-width: 980px){
-  html, body{overflow:auto;}
-  .container{height:auto; overflow:visible;}
+  html, body{
+    height:auto;
+    min-height:100vh;
+    overflow:auto;
+    display:block;
+  }
+  .nav{
+    position:relative;
+    flex-direction:column;
+    gap:6px;
+    padding:6px 10px;
+  }
+  .nav .tabs{gap:4px;}
+  .nav .tab{padding:4px 8px; font-size:10px;}
+  .container{
+    height:auto;
+    min-height:0;
+    overflow:visible;
+    padding:10px;
+  }
   .main{grid-template-columns:1fr;}
+  .chartArea{min-height:300px;}
+  .canvasWrap{min-height:280px;}
+  .panel{max-height:none;}
+  .tabcontent{overflow:visible;}
   #footerRight{max-width:none;}
+  header{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  .badge-row{
+    justify-content:flex-start;
+    max-width:none;
+  }
+  header h1{font-size:15px;}
+  .kicker{font-size:11px;}
+}
+
+/* Landscape phones — very limited vertical space */
+@media (max-width: 980px) and (orientation: landscape){
+  html, body{
+    height:auto;
+    min-height:100vh;
+    overflow:auto;
+  }
+  .container{
+    height:auto;
+    overflow:visible;
+  }
+  .chartArea{min-height:240px;}
+  .canvasWrap{min-height:220px;}
+  /* Stack chart above controls, both visible with scroll */
+  .main{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  header{
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    align-items:center;
+  }
+  header h1{font-size:13px;}
+  .kicker{
+    font-size:10px;
+    -webkit-line-clamp:1;
+  }
+  .badge-row{
+    gap:4px;
+  }
+  .badge, .langbtn{
+    padding:3px 6px;
+    font-size:10px;
+  }
+}
+
+/* Very small screens — make controls full-width, large touch targets */
+@media (max-width: 600px){
+  .container{padding:8px;}
+  .controls{gap:12px;}
+  .control{gap:8px;}
+  .btnrow{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .btnrow button{
+    padding:12px 8px;
+    font-size:13px !important;
+    min-height:44px;
+  }
+  .toggle{
+    padding:8px 0;
+    min-height:44px;
+    align-items:center;
+  }
+  .toggle input{transform:none; width:18px; height:18px;}
+  label{font-size:13px !important;}
+  label b{font-size:14px !important;}
+  .bullets{font-size:13px !important;}
+  .callout{font-size:13px !important;}
+  .chartArea{min-height:260px;}
+  .canvasWrap{min-height:240px;}
+  header{
+    grid-template-columns:1fr;
+    gap:6px;
+  }
+  .badge-row{
+    gap:4px;
+  }
+  .legendOverlay{
+    font-size:10px !important;
+    padding:4px 6px !important;
+    gap:4px 6px !important;
+    max-width:calc(100% - 20px);
+  }
+}
+
+/* Landscape phones — very short height, prioritize controls visibility */
+@media (max-height: 500px) and (orientation: landscape){
+  html, body{
+    height:auto;
+    min-height:100vh;
+    overflow:auto;
+  }
+  .container{
+    height:auto;
+    overflow:visible;
+    padding:8px;
+  }
+  .main{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  .chartArea{min-height:200px;}
+  .canvasWrap{min-height:180px;}
+  header{display:none;}  /* hide title/badges, nav is enough */
+  .nav{padding:4px 10px;}
+  .nav .tab{padding:3px 6px; font-size:9px;}
 }
 
 /* Pulse / blink animations for dynamic elements */
