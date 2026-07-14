@@ -56,7 +56,7 @@
 
 <style>
 /* Scoped styles — upgraded */
-.npv-toy{ --box:#0f1b29; --line:#22354f; --fg:#e9f3ff; --muted:#bcd1ff; --blue:#3b82f6; --red:#ef4444; --shadow:0 1px 0 rgba(0,0,0,.25), 0 12px 30px rgba(0,0,0,.25); }
+.npv-toy{ --box:#3b4a5f; --line:#54637a; --fg:#f1f5f9; --muted:#c4d0df; --blue:#8ec5e8; --red:#f0a0a0; --shadow:0 1px 0 rgba(0,0,0,.25), 0 12px 30px rgba(0,0,0,.25); }
 .npv-toy .card{ background:var(--box); border:1px solid var(--line); border-radius:14px; padding:12px; box-shadow:var(--shadow); }
 .npv-row{ display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:6px; }
 .npv-col{ flex:1; min-width:0; }
@@ -65,8 +65,8 @@
 .npv-legend{ display:flex; gap:14px; justify-content:flex-end; align-items:center; }
 .npv-legend-item{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); white-space:nowrap; }
 .swatch{ width:12px; height:12px; border-radius:3px; display:inline-block; border:1px solid var(--line); }
-.sw-blue{ background:linear-gradient(135deg,#60a5fa,#3b82f6); box-shadow:0 0 6px rgba(59,130,246,.4); }
-.sw-red{ background:linear-gradient(135deg,#f87171,#ef4444); box-shadow:0 0 6px rgba(239,68,68,.4); }
+.sw-blue{ background:linear-gradient(135deg,#60a5fa,#8ec5e8); box-shadow:0 0 6px rgba(59,130,246,.4); }
+.sw-red{ background:linear-gradient(135deg,#f87171,#f0a0a0); box-shadow:0 0 6px rgba(239,68,68,.4); }
 
 .npv-note{ margin:4px 0 8px; color:var(--muted); font-size:11px; line-height:1.35; }
 
@@ -102,18 +102,18 @@
 .pill:hover{ transform:translateY(-1px); border-color:rgba(93,169,255,.4); }
 .pill.active{ background:linear-gradient(90deg,rgba(96,165,250,.2),rgba(239,68,68,.2)); border-color:rgba(93,169,255,.5); }
 
-.npv-warn{ display:inline-block; margin-top:4px; padding:2px 8px; border:1px solid #ef4444; border-radius:999px; color:#f87171; background:rgba(239,68,68,.1); font-size:10px; font-weight:700; }
+.npv-warn{ display:inline-block; margin-top:4px; padding:2px 8px; border:1px solid #f0a0a0; border-radius:999px; color:#f87171; background:rgba(239,68,68,.1); font-size:10px; font-weight:700; }
 
 /* Dynamic status line — new */
 .npv-status{ display:flex; align-items:center; gap:8px; margin:6px 0 8px; padding:6px 10px; border-radius:8px; background:rgba(93,169,255,.06); border:1px solid rgba(93,169,255,.15); font-size:11px; }
 .npv-status .dot{ width:8px; height:8px; border-radius:50%; animation:npv-pulse 1.5s ease-in-out infinite; }
-.npv-status .dot.danger{ background:#ef4444; box-shadow:0 0 8px #ef4444; }
+.npv-status .dot.danger{ background:#f0a0a0; box-shadow:0 0 8px #f0a0a0; }
 .npv-status .dot.warn{ background:#fbbf24; box-shadow:0 0 8px #fbbf24; }
-.npv-status .dot.ok{ background:#10b981; box-shadow:0 0 8px #10b981; }
+.npv-status .dot.ok{ background:#7dd3a8; box-shadow:0 0 8px #7dd3a8; }
 .npv-status .label{ font-weight:800; letter-spacing:.5px; font-size:10px; }
 .npv-status .label.danger{ color:#f87171; }
 .npv-status .label.warn{ color:#fbbf24; }
-.npv-status .label.ok{ color:#10b981; }
+.npv-status .label.ok{ color:#7dd3a8; }
 .npv-status .nums{ color:#5da9ff; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:10.5px; }
 
 @keyframes npv-pulse{ 0%,100%{opacity:1;} 50%{opacity:.4;} }
@@ -277,12 +277,12 @@
 
     // Upgraded colorscales — neon glow
     const surf1 = {type:'surface', x:s1.x, y:s1.y, z:s1.z,
-                   colorscale:[[0,'#1e3a5f'],[0.5,'#3b82f6'],[1,'#60a5fa']],
+                   colorscale:[[0,'#3b4a5f'],[0.5,'#8ec5e8'],[1,'#b0d4ec']],
                    showscale:false, opacity:0.95,
                    name:map.leftLabel, customdata:cd1,
                    hovertemplate:`${map.leftLabel}: %{customdata:.3f}<extra></extra>`};
     const surf2 = {type:'surface', x:s2.x, y:s2.y, z:s2.z,
-                   colorscale:[[0,'#7f1d1d'],[0.5,'#ef4444'],[1,'#f87171']],
+                   colorscale:[[0,'#5c3a3a'],[0.5,'#f0a0a0'],[1,'#f5c0c0']],
                    showscale:false, opacity:0.95, reversescale:true,
                    name:map.rightLabel, customdata:cd2,
                    hovertemplate:`${map.rightLabel}: %{customdata:.3f}<extra></extra>`};
@@ -292,15 +292,15 @@
       margin:{l:0,r:0,t:0,b:0},
       paper_bgcolor:'rgba(0,0,0,0)',
       scene:{
-        xaxis:{title:'x (сейчас ↔ будущее)', range:[0,3.6], tick0:0, dtick:0.5, gridcolor:'rgba(147,163,191,.15)', zeroline:false, titlefont:{color:'#bcd1ff',size:10}, tickfont:{color:'#7f879b',size:9}},
-        yaxis:{title:'y', range:[-1.6,1.6], gridcolor:'rgba(147,163,191,.15)', zeroline:false, titlefont:{color:'#bcd1ff',size:10}, tickfont:{color:'#7f879b',size:9}},
-        zaxis:{title:'z', range:[-1.6,1.6], gridcolor:'rgba(147,163,191,.15)', zeroline:false, titlefont:{color:'#bcd1ff',size:10}, tickfont:{color:'#7f879b',size:9}},
+        xaxis:{title:'x (сейчас ↔ будущее)', range:[0,3.6], tick0:0, dtick:0.5, gridcolor:'rgba(147,163,191,.15)', zeroline:false, titlefont:{color:'#c4d0df',size:11}, tickfont:{color:'#94a3b8',size:10}},
+        yaxis:{title:'y', range:[-1.6,1.6], gridcolor:'rgba(147,163,191,.15)', zeroline:false, titlefont:{color:'#c4d0df',size:11}, tickfont:{color:'#94a3b8',size:10}},
+        zaxis:{title:'z', range:[-1.6,1.6], gridcolor:'rgba(147,163,191,.15)', zeroline:false, titlefont:{color:'#c4d0df',size:11}, tickfont:{color:'#94a3b8',size:10}},
         aspectmode:'cube',
         camera: frontCam(),
         bgcolor:'rgba(0,0,0,0)'
       },
       height:460,
-      font:{color:'#e9f3ff', size:10}
+      font:{color:'#f1f5f9', size:11}
     };
 
     if(!elPlot._plotted){
@@ -311,7 +311,7 @@
     }
 
     // Bar chart — neon colors, smaller fonts
-    const colors = ['#3b82f6', '#ef4444', (M.debtH > M.nom ? '#dc2626' : '#10b981')];
+    const colors = ['#8ec5e8', '#f0a0a0', (M.debtH > M.nom ? '#e88080' : '#7dd3a8')];
     const bars = [M.pv, M.nom, M.debtH];
     const barTrace = {
       type:'bar', x:['PV@0', NOMINAL_LABEL, DEBT_LABEL], y:bars,
@@ -321,15 +321,15 @@
       },
       text:bars.map(v=>v.toFixed(1)),
       textposition:'auto',
-      textfont:{size:10, color:'#e9f3ff'},
+      textfont:{size:10, color:'#f1f5f9'},
       hovertemplate:'%{x}: %{y:.3f}<extra></extra>'
     };
     const barLayout = {
       margin:{l:42,r:8,t:8,b:36},
       paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
-      yaxis:{gridcolor:'rgba(34,53,79,.4)', title:{text:VALUE_LABEL, font:{size:10, color:'#bcd1ff'}}, tickfont:{size:9, color:'#7f879b'}},
-      xaxis:{tickfont:{size:10, color:'#bcd1ff'}},
-      font:{color:'#e9f3ff', size:10},
+      yaxis:{gridcolor:'rgba(34,53,79,.4)', title:{text:VALUE_LABEL, font:{size:10, color:'#c4d0df'}}, tickfont:{size:9, color:'#94a3b8'}},
+      xaxis:{tickfont:{size:10, color:'#c4d0df'}},
+      font:{color:'#f1f5f9', size:11},
       showlegend:false
     };
     if(!elBars._plotted){
