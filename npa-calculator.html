@@ -1489,7 +1489,7 @@ function narrativeHTML(a, p, h, ex, hyP, debt, halfAge, band, disc, fnGood, fnBa
   const devTitle = isRU ? "💀 ИСТРЕБИТЕЛЬ" : "💀 EXTERMINATOR";
   const devYearsLbl = isRU ? "лет когниции" : "cog-years";
   const devDoomWarning = ex.D > 1
-    ? (isRU ? `D=${ex.D.toFixed(2)} > 1: экстракция` : `D=${ex.D.toFixed(2)} > 1: extraction`)
+    ? (isRU ? `D=${ex.D.toFixed(2)} > 1: маркер экстракции` : `D=${ex.D.toFixed(2)} > 1: extraction marker`)
     : (isRU ? `D=${ex.D.toFixed(2)} < 1: естественно` : `D=${ex.D.toFixed(2)} < 1: natural`);
   const devDoomColor = ex.D > 1 ? "#f0a0a0" : "#7dd3a8";
 
