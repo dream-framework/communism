@@ -4,7 +4,7 @@ from flask import Flask, render_template, redirect, url_for, request, jsonify, B
 from functools import wraps
 
 
-MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")  # ← same as physics
+MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")  # ← same as physics
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False  # /api/groq_chat and /api/groq_chat/ both work
